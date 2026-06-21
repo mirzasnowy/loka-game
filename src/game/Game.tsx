@@ -22,6 +22,7 @@ import GunSystem from "@/systems/GunSystem";
 import EffectsSystem from "@/systems/EffectsSystem";
 import QuestSystem from "@/systems/QuestSystem";
 import InteractionSystem from "@/systems/InteractionSystem";
+import PostFX from "./PostFX";
 import HUD from "./HUD";
 import StartScreen from "./StartScreen";
 
@@ -44,11 +45,11 @@ export default function Game() {
   return (
     <>
       <Canvas
-        shadows
+        shadows="soft"
         flat /* NoToneMapping — render colors at face value so nothing crushes to black */
-        dpr={[1, 1.5]}
+        dpr={[1, 2]}
         camera={{ position: [30, 12, 30], fov: 55, near: 0.15, far: 900 }}
-        gl={{ powerPreference: "high-performance", antialias: false }}
+        gl={{ powerPreference: "high-performance", antialias: false, stencil: false, depth: true }}
       >
         {/* Bright sky background — guaranteed even before TimeWeather runs */}
         <color attach="background" args={["#7fc4f0"]} />
@@ -73,6 +74,7 @@ export default function Game() {
           <InteractionSystem />
 
           <Preload all />
+          <PostFX />
         </Suspense>
       </Canvas>
       <HUD />

@@ -44,6 +44,7 @@ function skyColor(h: number, out: Color) {
 
 export default function TimeWeather() {
   const sun    = useRef<DirectionalLight>(null!);
+  const sunDisc= useRef<import("three").Mesh>(null!);
   const amb    = useRef<AmbientLight>(null!);
   const hemi   = useRef<HemisphereLight>(null!);
   const sky    = useRef<any>(null!);
@@ -99,16 +100,26 @@ export default function TimeWeather() {
     const daylight = Math.max(0, Math.sin(ang));
 
     if (sun.current) {
-      sun.current.position.copy(sunVec);
+      // Shadow frustum follows the player so crisp shadows render wherever you are.
+      const [spx, , spz] = st.runtime.pos;
+      sun.current.position.set(spx + sunVec.x * 0.85, sunVec.y * 0.85, spz + sunVec.z * 0.85);
       sunColor(h, tmpSun);
       sun.current.color.copy(tmpSun);
       sun.current.intensity = Math.max(0.6, (0.4 + daylight * 1.2) * (cloudy ? 0.7 : 1));
-      sun.current.target.position.set(0, 0, 0);
+      sun.current.target.position.set(spx, 0, spz);
       sun.current.target.updateMatrixWorld();
     }
     
     if (sky.current && sky.current.material && sky.current.material.uniforms) {
       sky.current.material.uniforms.sunPosition.value.copy(sunVec);
+    }
+
+    // Bright sun disc that bloom turns into a glowing halo; fades below horizon.
+    if (sunDisc.current) {
+      sunDisc.current.position.set(sunVec.x * 4, sunVec.y * 4, sunVec.z * 4);
+      const mat = sunDisc.current.material as import("three").MeshBasicMaterial;
+      mat.opacity = daylight > 0.02 ? 1 : 0;
+      mat.color.copy(tmpSun).lerp(new Color("#ffffff"), 0.5);
     }
 
     // Ambient — high floor so every face keeps its color even in shadow
@@ -172,21 +183,28 @@ export default function TimeWeather() {
         position={[0, 1, 0]}
       />
 
-      {/* Sun — primary directional, warm, casts shadows */}
+      {/* Sun — primary directional, warm, crisp soft shadows */}
       <directionalLight
         ref={sun}
         position={[80, 120, 40]}
         intensity={1.5}
         color="#fff0c0"
         castShadow
-        shadow-mapSize={[1024, 1024]}
-        shadow-camera-left={-160}
-        shadow-camera-right={160}
-        shadow-camera-top={160}
-        shadow-camera-bottom={-160}
-        shadow-camera-far={500}
-        shadow-bias={-0.0004}
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-120}
+        shadow-camera-right={120}
+        shadow-camera-top={120}
+        shadow-camera-bottom={-120}
+        shadow-camera-far={420}
+        shadow-bias={-0.0003}
+        shadow-normalBias={0.04}
       />
+
+      {/* Glowing sun disc (bloom turns it into a halo) */}
+      <mesh ref={sunDisc} position={[320, 480, 160]}>
+        <sphereGeometry args={[16, 16, 16]} />
+        <meshBasicMaterial color="#fff3c0" transparent toneMapped={false} fog={false} />
+      </mesh>
 
       {/* Fill lights from the other sides so no face stays dark */}
       <directionalLight position={[-70, 50, -60]} intensity={0.7} color="#cfe2ff" />

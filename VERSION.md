@@ -1,6 +1,6 @@
 # Versioning Rule
 
-Current version: **1.2.4**
+Current version: **1.2.5**
 
 ## Scheme: `MAJOR.MINOR.PATCH`
 
@@ -19,6 +19,9 @@ stable and we deliberately cut a milestone.
 3. Push `main` → Cloudflare Pages auto-redeploys to https://loka.mirzakur.xyz
 
 ## History
+- 1.2.5 — big graphics pass: cinematic post-processing (bloom, contrast, saturation,
+  vignette, SMAA), soft 2048 shadows that follow the player, glowing sun disc, glowing
+  street lamps, higher DPR. Added @react-three/postprocessing + postprocessing deps.
 - 1.2.4 — solid colliders for world props (trees, lamps, traffic poles, benches,
   bollards, carts, stores, haltes, station) so you can't walk through them; proper
   3-aspect traffic-light models (red/yellow/green stacked) at intersections, lit per

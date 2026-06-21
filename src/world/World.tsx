@@ -389,7 +389,7 @@ function StreetLamps() {
       </instancedMesh>
       <instancedMesh ref={headRef} args={[undefined, undefined, positions.length]}>
         <sphereGeometry args={[1, 7, 5]} />
-        <meshLambertMaterial color="white" emissive="#ffe060" emissiveIntensity={1.0} />
+        <meshBasicMaterial color="#fff0b0" toneMapped={false} />
       </instancedMesh>
     </>
   );
