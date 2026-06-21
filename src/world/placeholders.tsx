@@ -130,75 +130,125 @@ function makeHumanoid(shirt: string, skin = "#c8956b", pants = "#2b3a4a") {
   };
 }
 
-// ─── Motorcycles ─────────────────────────────────────────────────────────────
+// ─── Motorcycles (Honda Beat / Vario silhouette) ─────────────────────────────
 function makeScooter(color: string) {
   return function Scooter(props: PlaceholderProps) {
+    const WR = 0.32; // wheel radius
     return (
       <group {...props}>
-        {/* Main body */}
-        <mesh position={[0, 0.58, 0]} castShadow>
-          <boxGeometry args={[0.52, 0.38, 1.7]} />
+        {/* === FRAME/CHASSIS === */}
+        {/* Under-step floor board (flat base) */}
+        <mesh position={[0, WR + 0.10, 0.04]} castShadow>
+          <boxGeometry args={[0.44, 0.12, 1.30]} />
           <meshLambertMaterial color={color} />
         </mesh>
-        {/* Seat */}
-        <mesh position={[0, 0.82, 0.1]} castShadow>
-          <boxGeometry args={[0.44, 0.14, 0.72]} />
-          <meshLambertMaterial color="#1a1010" />
-        </mesh>
-        {/* Front fairing */}
-        <mesh position={[0, 0.72, 0.75]} castShadow>
-          <boxGeometry args={[0.48, 0.44, 0.36]} />
+
+        {/* === BODY PANELS === */}
+        {/* Front apron / leg shield (tall, wide at top) */}
+        <mesh position={[0, WR + 0.52, 0.68]} castShadow>
+          <boxGeometry args={[0.46, 0.60, 0.28]} />
           <meshLambertMaterial color={color} />
         </mesh>
-        {/* Windscreen */}
-        <mesh position={[0, 0.98, 0.82]}>
-          <boxGeometry args={[0.38, 0.22, 0.08]} />
-          <meshLambertMaterial color="#a8daf0" transparent opacity={0.7} />
-        </mesh>
-        {/* Handlebar */}
-        <mesh position={[0, 1.02, 0.76]} rotation={[0, Math.PI / 2, 0]}>
-          <cylinderGeometry args={[0.04, 0.04, 0.66, 6]} />
-          <meshLambertMaterial color="#303030" />
-        </mesh>
-        {/* Tail section */}
-        <mesh position={[0, 0.64, -0.72]} castShadow>
-          <boxGeometry args={[0.46, 0.28, 0.36]} />
+        {/* Central body bulge */}
+        <mesh position={[0, WR + 0.46, 0.10]} castShadow>
+          <boxGeometry args={[0.50, 0.48, 0.70]} />
           <meshLambertMaterial color={color} />
         </mesh>
-        {/* Rear light */}
-        <mesh position={[0, 0.64, -0.92]}>
-          <boxGeometry args={[0.22, 0.10, 0.06]} />
-          <meshLambertMaterial color="#ff2020" emissive="#cc0000" emissiveIntensity={0.6} />
+        {/* Rear tail section */}
+        <mesh position={[0, WR + 0.38, -0.58]} castShadow>
+          <boxGeometry args={[0.46, 0.36, 0.48]} />
+          <meshLambertMaterial color={color} />
         </mesh>
-        {/* Headlight */}
-        <mesh position={[0, 0.75, 0.92]}>
-          <boxGeometry args={[0.22, 0.14, 0.06]} />
-          <meshLambertMaterial color="#fffbe0" emissive="#ffe060" emissiveIntensity={0.4} />
+        {/* Rear tail fin (angled top) */}
+        <mesh position={[0, WR + 0.56, -0.72]} castShadow>
+          <boxGeometry args={[0.42, 0.16, 0.22]} />
+          <meshLambertMaterial color={color} />
         </mesh>
-        {/* Front wheel */}
-        <mesh position={[0, 0.30, 0.78]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.30, 0.30, 0.18, 14]} />
-          <meshLambertMaterial color="#181818" />
+
+        {/* === SEAT === */}
+        <mesh position={[0, WR + 0.72, -0.14]} castShadow>
+          <boxGeometry args={[0.40, 0.13, 0.78]} />
+          <meshLambertMaterial color="#1a0e0e" />
         </mesh>
-        {/* Front wheel hub */}
-        <mesh position={[0, 0.30, 0.78]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.12, 0.12, 0.20, 8]} />
+
+        {/* === FRONT FAIRING (Honda Beat characteristic wide front) === */}
+        <mesh position={[0, WR + 0.68, 0.84]} castShadow>
+          <boxGeometry args={[0.52, 0.38, 0.22]} />
+          <meshLambertMaterial color={color} />
+        </mesh>
+
+        {/* === WINDSCREEN === */}
+        <mesh position={[0, WR + 0.92, 0.88]}>
+          <boxGeometry args={[0.40, 0.24, 0.07]} />
+          <meshLambertMaterial color="#c0e8ff" transparent opacity={0.72} />
+        </mesh>
+
+        {/* === HEADLIGHT (rectangular, characteristic Beat shape) === */}
+        <mesh position={[0, WR + 0.56, 0.93]}>
+          <boxGeometry args={[0.36, 0.18, 0.07]} />
+          <meshLambertMaterial color="#fffce0" emissive="#ffe040" emissiveIntensity={0.5} />
+        </mesh>
+        {/* Headlight housing */}
+        <mesh position={[0, WR + 0.56, 0.91]}>
+          <boxGeometry args={[0.40, 0.22, 0.06]} />
+          <meshLambertMaterial color="#282828" />
+        </mesh>
+
+        {/* === HANDLEBAR === */}
+        <mesh position={[0, WR + 0.96, 0.78]} rotation={[0, Math.PI / 2, 0]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.72, 6]} />
+          <meshLambertMaterial color="#252525" />
+        </mesh>
+        {/* Handlebar grips */}
+        {[-0.35, 0.35].map((x) => (
+          <mesh key={x} position={[x, WR + 0.96, 0.76]} rotation={[0.3, 0, 0]}>
+            <cylinderGeometry args={[0.055, 0.045, 0.18, 6]} />
+            <meshLambertMaterial color="#111" />
+          </mesh>
+        ))}
+
+        {/* === TAIL LIGHT === */}
+        <mesh position={[0, WR + 0.48, -0.84]}>
+          <boxGeometry args={[0.26, 0.12, 0.06]} />
+          <meshLambertMaterial color="#ff1818" emissive="#cc0000" emissiveIntensity={0.7} />
+        </mesh>
+
+        {/* === FRONT FORK === */}
+        <mesh position={[0, WR + 0.14, 0.75]} rotation={[-0.18, 0, 0]}>
+          <boxGeometry args={[0.08, 0.52, 0.06]} />
+          <meshLambertMaterial color="#555" />
+        </mesh>
+
+        {/* === EXHAUST PIPE === */}
+        <mesh position={[-0.26, WR + 0.06, -0.22]} rotation={[0.1, 0, 0]}>
+          <cylinderGeometry args={[0.045, 0.055, 0.88, 7]} />
+          <meshLambertMaterial color="#707070" />
+        </mesh>
+        <mesh position={[-0.26, WR + 0.04, -0.64]}>
+          <cylinderGeometry args={[0.07, 0.06, 0.24, 7]} />
+          <meshLambertMaterial color="#606060" />
+        </mesh>
+
+        {/* === FRONT WHEEL === */}
+        <mesh position={[0, WR, 0.80]} rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[WR, WR, 0.18, 16]} />
+          <meshLambertMaterial color="#161616" />
+        </mesh>
+        {/* Front hub */}
+        <mesh position={[0, WR, 0.80]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[WR * 0.38, WR * 0.38, 0.20, 8]} />
           <meshLambertMaterial color="#888" />
         </mesh>
-        {/* Rear wheel */}
-        <mesh position={[0, 0.30, -0.72]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.30, 0.30, 0.18, 14]} />
-          <meshLambertMaterial color="#181818" />
+
+        {/* === REAR WHEEL === */}
+        <mesh position={[0, WR, -0.74]} rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[WR, WR, 0.18, 16]} />
+          <meshLambertMaterial color="#161616" />
         </mesh>
-        {/* Rear wheel hub */}
-        <mesh position={[0, 0.30, -0.72]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.12, 0.12, 0.20, 8]} />
+        {/* Rear hub */}
+        <mesh position={[0, WR, -0.74]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[WR * 0.38, WR * 0.38, 0.20, 8]} />
           <meshLambertMaterial color="#888" />
-        </mesh>
-        {/* Engine/frame */}
-        <mesh position={[0, 0.40, 0.05]}>
-          <boxGeometry args={[0.22, 0.22, 0.9]} />
-          <meshLambertMaterial color="#404040" />
         </mesh>
       </group>
     );

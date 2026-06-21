@@ -13,17 +13,17 @@ import { useGame, deriveTimeOfDay, type Weather } from "@/core/store";
 const RAIN_COUNT = 1200;
 const RAIN_AREA  = 120;
 
-// Morning palette — warm, bright, no black world
-const SKY_MORNING = new Color("#a8d4f0");
-const SKY_DAY     = new Color("#78bce8");
-const SKY_SUNSET  = new Color("#e8904a");
-const SKY_NIGHT   = new Color("#0e1828");
-const SUN_MORNING = new Color("#ffe0a0");
-const SUN_DAY     = new Color("#fff8e8");
-const SUN_SUNSET  = new Color("#ff8830");
-const SUN_NIGHT   = new Color("#2840a0");
-const GROUND_DAY  = new Color("#3a7028");
-const GROUND_NIGHT= new Color("#0a1808");
+// Vivid Synty-style palette — bright, saturated, no dark world
+const SKY_MORNING = new Color("#80c8f8");
+const SKY_DAY     = new Color("#58b0f0");
+const SKY_SUNSET  = new Color("#f0904a");
+const SKY_NIGHT   = new Color("#162038");
+const SUN_MORNING = new Color("#ffe880");
+const SUN_DAY     = new Color("#fff4c0");
+const SUN_SUNSET  = new Color("#ff7820");
+const SUN_NIGHT   = new Color("#304898");
+const GROUND_DAY  = new Color("#4a9030");
+const GROUND_NIGHT= new Color("#1a3018");
 
 function sunColor(h: number, out: Color) {
   if (h >= 6  && h < 9 ) return out.copy(SUN_MORNING);
@@ -147,22 +147,22 @@ export default function TimeWeather() {
 
   return (
     <>
-      {/* Strong ambient so nothing is ever pitch black */}
-      <ambientLight ref={amb} intensity={0.8} color="#e8f0ff" />
+      {/* Very strong ambient — guarantees no black world at all */}
+      <ambientLight ref={amb} intensity={1.1} color="#d8eeff" />
 
-      {/* Hemisphere fills sky/ground color into surfaces */}
+      {/* Hemisphere: vivid blue sky / bright green ground */}
       <hemisphereLight
         ref={hemi}
-        args={["#a8d4f0", "#3a7028", 0.6]}
+        args={["#58b0f0", "#4a9030", 0.8]}
         position={[0, 1, 0]}
       />
 
-      {/* Sun — primary directional */}
+      {/* Sun — primary directional, warm */}
       <directionalLight
         ref={sun}
         position={[80, 120, 40]}
-        intensity={1.8}
-        color="#ffe0a0"
+        intensity={2.0}
+        color="#ffe880"
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-160}
@@ -173,8 +173,11 @@ export default function TimeWeather() {
         shadow-bias={-0.0004}
       />
 
-      {/* Sky dome */}
-      <Sky sunPosition={[80, 30, 100]} turbidity={6} rayleigh={2} mieCoefficient={0.005} />
+      {/* Fill light from opposite side (no dark faces) */}
+      <directionalLight position={[-60, 40, -60]} intensity={0.6} color="#c0d8ff" />
+
+      {/* Sky dome — vivid blue with low turbidity */}
+      <Sky sunPosition={[80, 30, 100]} turbidity={3} rayleigh={1.2} mieCoefficient={0.003} mieDirectionalG={0.8} />
 
       {/* Rain */}
       <points ref={rain} geometry={rainGeo} visible={false}>
