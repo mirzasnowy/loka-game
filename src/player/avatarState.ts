@@ -15,4 +15,5 @@ export const avatar = {
   fireAt: 0,       // performance.now() of last gunshot (recoil + muzzle flash)
   comboCount: 1,   // 1=jab, 2=hook, 3+=uppercut
   weapon: "fists" as "fists" | "pistol",
+  ridingMode: false as false | "moto" | "car",
 };

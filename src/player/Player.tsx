@@ -91,7 +91,7 @@ export default function Player() {
     // Reliable ground check via raycast
     jumpCooldown.current -= delta;
     const p = b.translation();
-    const ray = new rapier.Ray({ x: p.x, y: p.y - 0.84 }, { x: 0, y: -1, z: 0 });
+    const ray = new rapier.Ray({ x: p.x, y: p.y - 0.84, z: p.z }, { x: 0, y: -1, z: 0 });
     const hit = world.castRay(ray, 0.15, true);
     const grounded = hit !== null;
 
