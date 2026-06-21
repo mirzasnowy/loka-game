@@ -75,6 +75,18 @@ export default function PlayerModel() {
     armL.current.rotation.z = 0.12; // slight outward
     armR.current.rotation.z = -0.12;
 
+    // COMBAT STANCE — kuda-kuda: left foot forward, right back, knees bent, guard up
+    const inCombat = now - Math.max(avatar.punchAt, avatar.kickAt) < 1500;
+    if (inCombat && !moving) {
+      legL.current.rotation.x = MathUtils.lerp(legL.current.rotation.x, -0.32, sm);
+      legR.current.rotation.x = MathUtils.lerp(legR.current.rotation.x, 0.30, sm);
+      legL.current.rotation.z = MathUtils.lerp(legL.current.rotation.z, 0.06, sm);
+      legR.current.rotation.z = MathUtils.lerp(legR.current.rotation.z, -0.06, sm);
+      // baseline guard (arms up) — individual strikes override below
+      armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -0.6, sm);
+      armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -0.6, sm);
+    }
+
     // PUNCH — jab(1), cross(2), hook(3), uppercut(4)
     const pt = (now - avatar.punchAt) / (avatar.comboCount >= 4 ? 360 : 260);
     if (pt >= 0 && pt < 1) {

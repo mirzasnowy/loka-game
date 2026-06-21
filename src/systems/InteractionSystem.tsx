@@ -6,12 +6,19 @@ import { input } from "@/core/input";
 import { VENDOR_PLACEMENTS, VENDORS } from "@/data/vendors";
 import { drivables } from "./registries";
 import { avatar } from "@/player/avatarState";
+import { generateCity } from "@/world/proc";
 
 // Park benches (matches World.MonasPark) — sit-able seats.
 const SEATS: [number, number][] = Array.from({ length: 12 }, (_, k) => {
   const a = (k / 12) * Math.PI * 2 + 0.26, r = 33;
   return [Math.cos(a) * r, Math.sin(a) * r];
 });
+
+// Warteg storefronts (placed by proc) — eat-in food.
+const WARTEGS: [number, number][] = generateCity().stores
+  .filter((s) => s.id === "store_warteg")
+  .map((s) => [s.x, s.z + 2.6]); // stand at the counter, in front of the stall
+const WARTEG_PRICE = 18_000;
 
 /**
  * Proximity interaction + economy. Finds the nearest interactable (vendor or
@@ -93,6 +100,15 @@ export default function InteractionSystem() {
       }
     }
 
+    // Warteg (eat-in)
+    for (const [wx, wz] of WARTEGS) {
+      const d = Math.hypot(px - wx, pz - wz);
+      if (d < bestDist) {
+        bestDist = d;
+        best = { id: `warteg-${wx.toFixed(0)}-${wz.toFixed(0)}`, kind: "poi", label: `Makan di Warteg — Rp ${WARTEG_PRICE.toLocaleString("id-ID")} (E)`, pos: [wx, 0, wz] };
+      }
+    }
+
     if (best?.id !== st.interact?.id || best?.kind !== st.interact?.kind) setInteract(best);
 
     if (best && input.consume("interact")) {
@@ -100,6 +116,15 @@ export default function InteractionSystem() {
       const target = best as InteractTarget;
       if (target.kind === "vehicle") {
         g.setInVehicle(target.id);
+      } else if (target.kind === "poi" && target.id.startsWith("warteg")) {
+        if (g.addMoney(-WARTEG_PRICE)) {
+          g.heal(55);
+          g.setStamina(g.player.stamina + 45);
+          g.reportEvent("buy", { target: "warteg" });
+          g.notify("Makan di Warteg (+55 HP) 🍛");
+        } else {
+          g.notify("Uang tidak cukup!");
+        }
       } else if (target.kind === "poi") {
         avatar.sitting = true;
         g.notify("Duduk 🪑");

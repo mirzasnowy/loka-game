@@ -66,6 +66,7 @@ export default function NPCSystem() {
   const legsRef = useRef<InstancedMesh>(null!);
   const armLRef = useRef<InstancedMesh>(null!);
   const armRRef = useRef<InstancedMesh>(null!);
+  const fxRef   = useRef<InstancedMesh>(null!);
 
   const agents = useMemo<Agent[]>(() => {
     const [px, , pz] = useGame.getState().runtime.pos;
@@ -114,14 +115,17 @@ export default function NPCSystem() {
         legsRef.current.setMatrixAt(i, dummy.matrix);
         armLRef.current.setMatrixAt(i, dummy.matrix);
         armRRef.current.setMatrixAt(i, dummy.matrix);
+        fxRef.current.setMatrixAt(i, dummy.matrix);
         continue;
       }
 
-      // Dead → hide, then respawn fresh elsewhere after a short delay.
+      // Dead → death burst, hide body, then respawn fresh after a short delay.
       if (npcDead[i]) {
-        if (performance.now() - npcHitAt[i] > 1400) {
+        const dt = performance.now() - npcHitAt[i];
+        if (dt > 1400) {
           spawnNear(a, px, pz); npcDead[i] = 0; npcHp[i] = 30; npcFleeUntil[i] = 0;
         } else {
+          const lx = npcPositions[i * 2], lz = npcPositions[i * 2 + 1];
           npcPositions[i * 2] = 99999; npcPositions[i * 2 + 1] = 99999;
           dummy.position.set(0, HIDE, 0); dummy.scale.setScalar(0.0001); dummy.updateMatrix();
           headRef.current.setMatrixAt(i, dummy.matrix);
@@ -129,6 +133,15 @@ export default function NPCSystem() {
           legsRef.current.setMatrixAt(i, dummy.matrix);
           armLRef.current.setMatrixAt(i, dummy.matrix);
           armRRef.current.setMatrixAt(i, dummy.matrix);
+          // death puff
+          if (dt < 400 && lx < 90000) {
+            dummy.position.set(lx, 1.0, lz); dummy.rotation.set(0, 0, 0);
+            dummy.scale.setScalar(0.4 + (dt / 400) * 1.0); dummy.updateMatrix();
+            fxRef.current.setMatrixAt(i, dummy.matrix);
+          } else {
+            dummy.position.set(0, HIDE, 0); dummy.scale.setScalar(0.0001); dummy.updateMatrix();
+            fxRef.current.setMatrixAt(i, dummy.matrix);
+          }
           continue;
         }
       }
@@ -228,9 +241,21 @@ export default function NPCSystem() {
       dummy.position.set(x + lx * cs + lz * sn, 1.06 + bob, z - lx * sn + lz * cs);
       dummy.rotation.set(0, a.rot, 0); dummy.scale.set(0.13, 0.46, 0.15); dummy.updateMatrix();
       armRRef.current.setMatrixAt(i, dummy.matrix);
+
+      // hit spark (impact burst above the chest while recently struck)
+      const hitDt = performance.now() - npcHitAt[i];
+      if (npcHitAt[i] > 0 && hitDt < 200) {
+        const k = hitDt / 200;
+        dummy.position.set(x, 1.3, z); dummy.rotation.set(0, 0, 0);
+        dummy.scale.setScalar(0.2 + k * 0.5); dummy.updateMatrix();
+        fxRef.current.setMatrixAt(i, dummy.matrix);
+      } else {
+        dummy.position.set(0, HIDE, 0); dummy.scale.setScalar(0.0001); dummy.updateMatrix();
+        fxRef.current.setMatrixAt(i, dummy.matrix);
+      }
     }
 
-    [headRef, bodyRef, legsRef, armLRef, armRRef].forEach((r) => { r.current.instanceMatrix.needsUpdate = true; });
+    [headRef, bodyRef, legsRef, armLRef, armRRef, fxRef].forEach((r) => { r.current.instanceMatrix.needsUpdate = true; });
   });
 
   return (
@@ -249,6 +274,9 @@ export default function NPCSystem() {
       </instancedMesh>
       <instancedMesh ref={armRRef} args={[undefined, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
+      </instancedMesh>
+      <instancedMesh ref={fxRef} args={[undefined, undefined, MAX_NPCS]} frustumCulled={false}>
+        <sphereGeometry args={[1, 6, 5]} /><meshBasicMaterial color="#ffcf3a" />
       </instancedMesh>
     </>
   );

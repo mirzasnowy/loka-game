@@ -10,10 +10,10 @@ export const npcHitAt = new Float32Array(MAX_NPCS);
 export const npcDead = new Uint8Array(MAX_NPCS);
 
 /**
- * Damage the nearest living NPC inside a forward cone. Returns the index hit, or
- * -1. Marks it fleeing; kills it if hp drops to 0.
+ * Damage the nearest living NPC inside a forward cone. Marks it fleeing; kills it
+ * if hp drops to 0. Returns { idx, killed } (idx -1 if nothing was in range).
  */
-export function hitNpcNear(px: number, pz: number, fx: number, fz: number, reach: number, dmg: number): number {
+export function hitNpcNear(px: number, pz: number, fx: number, fz: number, reach: number, dmg: number): { idx: number; killed: boolean } {
   let best = -1;
   let bestScore = -Infinity;
   for (let i = 0; i < MAX_NPCS; i++) {
@@ -29,12 +29,12 @@ export function hitNpcNear(px: number, pz: number, fx: number, fz: number, reach
     const score = dot - d / reach;
     if (score > bestScore) { bestScore = score; best = i; }
   }
-  if (best >= 0) {
-    const now = performance.now();
-    npcHp[best] -= dmg;
-    npcHitAt[best] = now;
-    npcFleeUntil[best] = now + 6000;
-    if (npcHp[best] <= 0) { npcDead[best] = 1; npcHitAt[best] = now; }
-  }
-  return best;
+  if (best < 0) return { idx: -1, killed: false };
+  const now = performance.now();
+  npcHp[best] -= dmg;
+  npcHitAt[best] = now;
+  npcFleeUntil[best] = now + 6000;
+  let killed = false;
+  if (npcHp[best] <= 0) { npcDead[best] = 1; npcHitAt[best] = now; killed = true; }
+  return { idx: best, killed };
 }

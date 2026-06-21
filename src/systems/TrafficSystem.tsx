@@ -40,10 +40,15 @@ const bodyDummy = new Object3D();
 const cabDummy  = new Object3D();
 const winDummy  = new Object3D();
 const whlDummy  = new Object3D();
+const rTorso    = new Object3D();
+const rHead     = new Object3D();
 const bodyCol   = new Color();
 const cabCol    = new Color();
 const winCol    = new Color("#bfe6f4");
 const whlCol    = new Color("#2b2b2b");
+const rTorsoCol = new Color("#2a2e3a");
+const rHeadCol  = new Color("#e6e6ee");
+const HELMET_COLORS = ["#e6e6ee", "#d83030", "#2a64c0", "#222"];
 
 function spawnVeh(v: Veh, px: number, pz: number) {
   v.kind = (Math.random() * KINDS.length) | 0;
@@ -71,6 +76,8 @@ export default function TrafficSystem() {
   const cabRef  = useRef<InstancedMesh>(null!);
   const whlRef  = useRef<InstancedMesh>(null!);
   const winRef  = useRef<InstancedMesh>(null!);
+  const rTorsoRef = useRef<InstancedMesh>(null!);
+  const rHeadRef  = useRef<InstancedMesh>(null!);
   const hitCd   = useRef(0);
 
   const vehicles = useMemo<Veh[]>(() => {
@@ -151,6 +158,8 @@ export default function TrafficSystem() {
           bodyRef.current.setMatrixAt(i, bodyDummy.matrix);
           cabRef.current.setMatrixAt(i, bodyDummy.matrix);
           winRef.current.setMatrixAt(i, bodyDummy.matrix);
+          rTorsoRef.current.setMatrixAt(i, bodyDummy.matrix);
+          rHeadRef.current.setMatrixAt(i, bodyDummy.matrix);
           for (let w = 0; w < 4; w++) { whlRef.current.setMatrixAt(i * 4 + w, bodyDummy.matrix); }
           bodyRef.current.setColorAt(i, bodyCol.set(KINDS[v.kind].body));
           cabRef.current.setColorAt(i, cabCol.set(KINDS[v.kind].cab));
@@ -234,9 +243,31 @@ export default function TrafficSystem() {
         whlRef.current.setMatrixAt(i * 4 + w, whlDummy.matrix);
         whlRef.current.setColorAt(i * 4 + w, whlCol);
       }
+
+      // Motorcycle rider — leaning torso + helmet (so motos aren't ghost-driven)
+      if (isMoto) {
+        const fwdX = Math.sin(rotY), fwdZ = Math.cos(rotY);
+        rTorso.position.set(x - fwdX * 0.08, bodyY + 0.5, z - fwdZ * 0.08);
+        rTorso.rotation.set(0.28, rotY, 0);
+        rTorso.scale.set(0.36, 0.62, 0.32);
+        rTorso.updateMatrix();
+        rTorsoRef.current.setMatrixAt(i, rTorso.matrix);
+        rTorsoRef.current.setColorAt(i, rTorsoCol);
+        rHead.position.set(x - fwdX * 0.02, bodyY + 1.0, z - fwdZ * 0.02);
+        rHead.rotation.set(0, rotY, 0);
+        rHead.scale.setScalar(0.22);
+        rHead.updateMatrix();
+        rHeadRef.current.setMatrixAt(i, rHead.matrix);
+        rHeadRef.current.setColorAt(i, rHeadCol.set(HELMET_COLORS[v.kind % HELMET_COLORS.length]));
+      } else {
+        rTorso.position.set(0, HIDE, 0); rTorso.scale.setScalar(0.001); rTorso.updateMatrix();
+        rTorsoRef.current.setMatrixAt(i, rTorso.matrix);
+        rHead.position.set(0, HIDE, 0); rHead.scale.setScalar(0.001); rHead.updateMatrix();
+        rHeadRef.current.setMatrixAt(i, rHead.matrix);
+      }
     }
 
-    [bodyRef, cabRef, winRef].forEach((r) => {
+    [bodyRef, cabRef, winRef, rTorsoRef, rHeadRef].forEach((r) => {
       r.current.instanceMatrix.needsUpdate = true;
       if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true;
     });
@@ -257,6 +288,12 @@ export default function TrafficSystem() {
       </instancedMesh>
       <instancedMesh ref={whlRef} args={[undefined, undefined, WHEEL_COUNT]} castShadow frustumCulled={false}>
         <cylinderGeometry args={[1, 1, 0.2, 12]} /><meshLambertMaterial color="white" />
+      </instancedMesh>
+      <instancedMesh ref={rTorsoRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
+      </instancedMesh>
+      <instancedMesh ref={rHeadRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
+        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial color="white" />
       </instancedMesh>
     </>
   );

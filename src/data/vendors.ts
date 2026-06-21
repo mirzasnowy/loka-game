@@ -13,16 +13,18 @@ export interface FoodItem {
 export interface VendorSpec {
   id: string;
   name: string;
-  assetId: string;
+  assetId: string;   // cart
+  sellerId: string;  // the penjual standing behind it
   food: FoodItem;
 }
 
 export const VENDORS: VendorSpec[] = [
-  { id: "bakso", name: "Bakso", assetId: "cart_bakso", food: { id: "bakso", name: "Bakso", price: 15_000, heal: 35, stamina: 30 } },
-  { id: "cilok", name: "Cilok", assetId: "cart_cilok", food: { id: "cilok", name: "Cilok", price: 8_000, heal: 15, stamina: 15 } },
-  { id: "siomay", name: "Siomay", assetId: "cart_somay", food: { id: "siomay", name: "Siomay", price: 12_000, heal: 25, stamina: 20 } },
-  { id: "es-teh", name: "Es Teh", assetId: "cart_esteh", food: { id: "es-teh", name: "Es Teh", price: 5_000, heal: 5, stamina: 35 } },
-  { id: "nasi-goreng", name: "Nasi Goreng", assetId: "cart_nasgor", food: { id: "nasi-goreng", name: "Nasi Goreng", price: 20_000, heal: 50, stamina: 40 } },
+  { id: "bakso", name: "Bakso", assetId: "cart_bakso", sellerId: "seller_bakso", food: { id: "bakso", name: "Bakso", price: 15_000, heal: 35, stamina: 30 } },
+  { id: "cilok", name: "Cilok", assetId: "cart_cilok", sellerId: "seller_cilok", food: { id: "cilok", name: "Cilok", price: 8_000, heal: 15, stamina: 15 } },
+  { id: "siomay", name: "Siomay", assetId: "cart_somay", sellerId: "seller_somay", food: { id: "siomay", name: "Siomay", price: 12_000, heal: 25, stamina: 20 } },
+  { id: "es-teh", name: "Es Teh", assetId: "cart_esteh", sellerId: "seller_esteh", food: { id: "es-teh", name: "Es Teh", price: 5_000, heal: 5, stamina: 35 } },
+  { id: "nasi-goreng", name: "Nasi Goreng", assetId: "cart_nasgor", sellerId: "seller_nasgor", food: { id: "nasi-goreng", name: "Nasi Goreng", price: 20_000, heal: 50, stamina: 40 } },
+  { id: "mie-ayam", name: "Mie Ayam", assetId: "cart_bakso", sellerId: "seller_mieayam", food: { id: "mie-ayam", name: "Mie Ayam", price: 14_000, heal: 32, stamina: 28 } },
 ];
 
 /** Fixed vendor placements in the world (data-driven world content). */
@@ -38,4 +40,6 @@ export const VENDOR_PLACEMENTS: VendorPlacement[] = [
   { vendorId: "siomay", pos: [41, 0, 72] },      // west sidewalk of x=48
   { vendorId: "nasi-goreng", pos: [89, 0, 56] }, // west sidewalk of x=96
   { vendorId: "cilok", pos: [-41, 0, 24] },      // east sidewalk of x=-48
+  { vendorId: "mie-ayam", pos: [-41, 0, -20] },  // east sidewalk of x=-48
+  { vendorId: "bakso", pos: [-12, 0, 41] },      // another bakso near the park
 ];

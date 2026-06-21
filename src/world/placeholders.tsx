@@ -657,6 +657,63 @@ function makeMinimart(band: string, accent: string) {
   };
 }
 
+// ─── Warteg (warung makan) ───────────────────────────────────────────────────
+function Warteg(props: PlaceholderProps) {
+  return (
+    <group {...props}>
+      {/* Stall body */}
+      <mesh position={[0, 1.6, -0.6]} castShadow receiveShadow><boxGeometry args={[6, 3.2, 3]} /><meshLambertMaterial color="#e8dcc0" /></mesh>
+      {/* Open counter front */}
+      <mesh position={[0, 1.0, 1.0]} castShadow><boxGeometry args={[6, 1.0, 0.6]} /><meshLambertMaterial color="#3a7a4a" /></mesh>
+      <mesh position={[0, 1.55, 1.0]}><boxGeometry args={[5.6, 0.1, 0.7]} /><meshLambertMaterial color="#c8b890" /></mesh>
+      {/* Glass food display (etalase) */}
+      <mesh position={[0, 1.95, 1.0]}><boxGeometry args={[5.4, 0.7, 0.6]} /><meshLambertMaterial color="#bfe6f4" transparent opacity={0.5} /></mesh>
+      {/* Food trays inside */}
+      {[-1.8, -0.6, 0.6, 1.8].map((x, i) => (
+        <mesh key={x} position={[x, 1.78, 1.0]}><boxGeometry args={[0.9, 0.18, 0.4]} /><meshLambertMaterial color={["#d8a040", "#c0502a", "#e8c850", "#9a6a3a"][i]} /></mesh>
+      ))}
+      {/* Awning / banner sign */}
+      <mesh position={[0, 3.3, 1.3]} rotation={[0.25, 0, 0]} castShadow><boxGeometry args={[6.4, 0.1, 1.6]} /><meshLambertMaterial color="#d11f2a" /></mesh>
+      <mesh position={[0, 3.5, 0.6]}><boxGeometry args={[6.2, 0.7, 0.1]} /><meshLambertMaterial color="#f5c518" /></mesh>
+      <mesh position={[0, 3.5, 0.66]}><boxGeometry args={[4.4, 0.4, 0.04]} /><meshLambertMaterial color="#7a1010" /></mesh>
+      {/* Roof */}
+      <mesh position={[0, 3.3, -0.6]} castShadow><boxGeometry args={[6.4, 0.3, 3.4]} /><meshLambertMaterial color="#9a6838" /></mesh>
+      {/* Plastic stools out front */}
+      {[-2, 0, 2].map((x) => (
+        <group key={x} position={[x, 0, 2.2]}>
+          <mesh position={[0, 0.45, 0]}><cylinderGeometry args={[0.22, 0.18, 0.1, 10]} /><meshLambertMaterial color="#cc3333" /></mesh>
+          <mesh position={[0, 0.22, 0]}><cylinderGeometry args={[0.05, 0.05, 0.45, 6]} /><meshLambertMaterial color="#b02828" /></mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// ─── Standing vendor (penjual at a cart) ─────────────────────────────────────
+function makeSeller(shirt: string) {
+  return function Seller(props: PlaceholderProps) {
+    const skin = "#c8956b";
+    return (
+      <group {...props}>
+        <mesh position={[0, 1.56, 0]} castShadow><boxGeometry args={[0.36, 0.36, 0.34]} /><meshLambertMaterial color={skin} /></mesh>
+        {/* peci / cap */}
+        <mesh position={[0, 1.78, 0]}><boxGeometry args={[0.38, 0.14, 0.36]} /><meshLambertMaterial color="#2a2a3a" /></mesh>
+        {/* apron torso */}
+        <mesh position={[0, 1.08, 0]} castShadow><boxGeometry args={[0.46, 0.62, 0.28]} /><meshLambertMaterial color={shirt} /></mesh>
+        <mesh position={[0, 1.0, 0.15]}><boxGeometry args={[0.4, 0.5, 0.02]} /><meshLambertMaterial color="#f0f0f0" /></mesh>
+        {/* arms */}
+        <mesh position={[-0.3, 1.14, 0.05]} rotation={[0.5, 0, 0.1]}><boxGeometry args={[0.12, 0.46, 0.14]} /><meshLambertMaterial color={shirt} /></mesh>
+        <mesh position={[0.3, 1.14, 0.05]} rotation={[0.5, 0, -0.1]}><boxGeometry args={[0.12, 0.46, 0.14]} /><meshLambertMaterial color={shirt} /></mesh>
+        {/* legs */}
+        <mesh position={[-0.12, 0.42, 0]}><boxGeometry args={[0.17, 0.5, 0.22]} /><meshLambertMaterial color="#33415a" /></mesh>
+        <mesh position={[0.12, 0.42, 0]}><boxGeometry args={[0.17, 0.5, 0.22]} /><meshLambertMaterial color="#33415a" /></mesh>
+        <mesh position={[-0.12, 0.12, 0.05]}><boxGeometry args={[0.16, 0.12, 0.3]} /><meshLambertMaterial color="#2a2018" /></mesh>
+        <mesh position={[0.12, 0.12, 0.05]}><boxGeometry args={[0.16, 0.12, 0.3]} /><meshLambertMaterial color="#2a2018" /></mesh>
+      </group>
+    );
+  };
+}
+
 // ─── Registration ─────────────────────────────────────────────────────────────
 let done = false;
 export function registerPlaceholders() {
@@ -699,7 +756,16 @@ export function registerPlaceholders() {
   registerAsset("halte",   { placeholder: Halte });
   registerAsset("station", { placeholder: Station });
 
-  // Minimarkets
+  // Minimarkets + warteg
   registerAsset("store_indomaret", { placeholder: makeMinimart("#1763b6", "#e23b2e") }); // blue + red
   registerAsset("store_alfamart",  { placeholder: makeMinimart("#d11f2a", "#f5c518") }); // red + yellow
+  registerAsset("store_warteg",    { placeholder: Warteg });
+
+  // Vendor sellers (penjual) — colour-coded per dagangan
+  registerAsset("seller_bakso",  { placeholder: makeSeller("#c0392b") });
+  registerAsset("seller_somay",  { placeholder: makeSeller("#27ae60") });
+  registerAsset("seller_cilok",  { placeholder: makeSeller("#e08a20") });
+  registerAsset("seller_esteh",  { placeholder: makeSeller("#2980b9") });
+  registerAsset("seller_nasgor", { placeholder: makeSeller("#b03030") });
+  registerAsset("seller_mieayam",{ placeholder: makeSeller("#d4a017") });
 }

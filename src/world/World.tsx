@@ -259,14 +259,14 @@ function Trees() {
   const bushRef  = useRef<InstancedMesh>(null!);
   const data = useMemo(() => generateCity().trees, []);
 
-  // per-variant silhouette: [trunkH, spread, height, taper]
-  // 0 round, 1 tall oak, 2 broad, 3 palm (tall thin), 4 bush (short wide)
+  // Clear brown trunk + rounded green crown. Variants tweak height/spread only,
+  // and the trunk always stays visible below the foliage.
   const SHAPE = [
-    { th: 2.8, sp: 1.0, hi: 1.0 },
-    { th: 3.6, sp: 0.85, hi: 1.25 },
-    { th: 2.4, sp: 1.25, hi: 0.9 },
-    { th: 4.6, sp: 0.62, hi: 0.8 },
-    { th: 1.4, sp: 1.35, hi: 0.7 },
+    { th: 3.2, sp: 1.00 }, // round
+    { th: 3.8, sp: 0.88 }, // tall
+    { th: 2.9, sp: 1.18 }, // broad
+    { th: 4.2, sp: 0.80 }, // big
+    { th: 2.6, sp: 1.05 }, // small
   ];
 
   useLayoutEffect(() => {
@@ -274,32 +274,37 @@ function Trees() {
       const s = t.scale;
       const v = t.variant % 5;
       const sh = SHAPE[v];
-      const th = sh.th * s, tr = 0.20 * s * (v === 3 ? 0.7 : 1);
+      const th = sh.th * s;          // trunk height (visible)
+      const tr = 0.22 * s;           // trunk radius
+      const sp = sh.sp;
 
+      // Trunk — brown, from ground up to th
       tmp.position.set(t.x, th / 2, t.z); tmp.rotation.set(0, 0, 0);
       tmp.scale.set(tr * 2, th, tr * 2); tmp.updateMatrix();
       trunkRef.current.setMatrixAt(i, tmp.matrix);
-      trunkRef.current.setColorAt(i, tmpColor.set(v === 3 ? "#8a6a3a" : "#6b4018"));
+      trunkRef.current.setColorAt(i, tmpColor.set("#7a4f22"));
 
-      tmp.position.set(t.x, th + 1.1 * s * sh.hi, t.z);
-      tmp.scale.set(2.6 * s * sh.sp, 1.8 * s * sh.hi, 2.6 * s * sh.sp); tmp.updateMatrix();
+      // Green crown sits ON TOP of the trunk (trunk stays exposed)
+      tmp.position.set(t.x, th + 0.9 * s, t.z);
+      tmp.scale.set(1.9 * s * sp, 1.7 * s, 1.9 * s * sp); tmp.updateMatrix();
       botRef.current.setMatrixAt(i, tmp.matrix);
       botRef.current.setColorAt(i, tmpColor.set(CANOPY_BOT[v]));
 
-      tmp.position.set(t.x, th + 2.4 * s * sh.hi, t.z);
-      tmp.scale.set(2.1 * s * sh.sp, 1.7 * s * sh.hi, 2.1 * s * sh.sp); tmp.updateMatrix();
+      tmp.position.set(t.x, th + 2.0 * s, t.z);
+      tmp.scale.set(1.55 * s * sp, 1.5 * s, 1.55 * s * sp); tmp.updateMatrix();
       midRef.current.setMatrixAt(i, tmp.matrix);
       midRef.current.setColorAt(i, tmpColor.set(CANOPY_MID[v]));
 
-      tmp.position.set(t.x, th + 3.5 * s * sh.hi, t.z);
-      tmp.scale.set(1.4 * s * sh.sp, 1.4 * s * sh.hi, 1.4 * s * sh.sp); tmp.updateMatrix();
+      tmp.position.set(t.x, th + 2.9 * s, t.z);
+      tmp.scale.set(1.05 * s * sp, 1.1 * s, 1.05 * s * sp); tmp.updateMatrix();
       topRef.current.setMatrixAt(i, tmp.matrix);
       topRef.current.setColorAt(i, tmpColor.set(CANOPY_TOP[v]));
 
-      tmp.position.set(t.x + 0.5 * s, 0.4 * s, t.z + 0.35 * s);
-      tmp.scale.setScalar(0.7 * s * sh.sp); tmp.updateMatrix();
+      // small shrub at the base
+      tmp.position.set(t.x + 0.55 * s, 0.35 * s, t.z + 0.4 * s);
+      tmp.scale.setScalar(0.55 * s); tmp.updateMatrix();
       bushRef.current.setMatrixAt(i, tmp.matrix);
-      bushRef.current.setColorAt(i, tmpColor.set("#1d7034"));
+      bushRef.current.setColorAt(i, tmpColor.set("#2a7a38"));
     });
     [trunkRef, botRef, midRef, topRef, bushRef].forEach((r) => {
       r.current.instanceMatrix.needsUpdate = true;
@@ -458,27 +463,13 @@ function StreetProps() {
   );
 }
 
-// ─── Minimarkets (detailed Indomaret / Alfamart, facing the road) ────────────
+// ─── Minimarkets + warteg (placed by proc, never overlapping buildings) ──────
 function Minimarkets() {
-  const stores = useMemo(() => {
-    const pts: { x: number; z: number; id: string }[] = [];
-    const major = [-72, -24, 72, 120];
-    let n = 0;
-    for (const ix of major) {
-      for (const iz of major) {
-        if (inPark(ix, iz)) continue;
-        // sit them on the buildable block, storefront facing +z toward the road
-        pts.push({ x: ix + 16, z: iz - SIDEWALK_OFF - 6, id: n % 2 === 0 ? "store_indomaret" : "store_alfamart" });
-        n++;
-      }
-    }
-    return pts;
-  }, []);
-
+  const stores = useMemo(() => generateCity().stores, []);
   return (
     <>
       {stores.map((s, i) => (
-        <Asset key={i} id={s.id} position={[s.x, 0, s.z]} />
+        <Asset key={i} id={s.id} position={[s.x, 0, s.z]} rotation={[0, s.rot, 0]} />
       ))}
     </>
   );

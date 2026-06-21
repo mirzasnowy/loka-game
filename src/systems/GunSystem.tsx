@@ -93,9 +93,12 @@ export default function GunSystem() {
             }
           } else {
             // no preman — try to hit an ordinary pedestrian
-            const ni = hitNpcNear(px, pz, fwd.x, fwd.z, RANGE, DMG);
-            if (ni >= 0) { st.triggerHitMarker(); hit.set(px + fwd.x * 8, 1.1, pz + fwd.z * 8); }
-            else hit.copy(muzzle).addScaledVector(fwd, RANGE);
+            const res = hitNpcNear(px, pz, fwd.x, fwd.z, RANGE, DMG);
+            if (res.idx >= 0) {
+              st.triggerHitMarker();
+              hit.set(px + fwd.x * 8, 1.1, pz + fwd.z * 8);
+              if (res.killed) { st.addExp(15); st.notify("Warga tertembak 💀"); }
+            } else hit.copy(muzzle).addScaledVector(fwd, RANGE);
           }
 
           const t = tracers.current[tIdx.current];

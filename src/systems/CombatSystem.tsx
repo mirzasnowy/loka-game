@@ -51,6 +51,7 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
   const bar = useRef<Group>(null!);
   const blood = useRef<Group>(null!);
   const cooldown = useRef(0);
+  const lastStrike = useRef(-999);
   const { camera } = useThree();
 
   const entry = useMemo<EnemyEntry>(
@@ -103,6 +104,7 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
     cooldown.current -= delta;
     if (dist <= ENEMY_REACH && cooldown.current <= 0) {
       cooldown.current = ENEMY_COOLDOWN;
+      lastStrike.current = now; // trigger the lunge animation
       const invuln = performance.now() < input.iframeUntil;
       if (!invuln) {
         useGame.getState().damage(input.block ? ENEMY_HIT * 0.35 : ENEMY_HIT);
@@ -119,6 +121,15 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
       fx = (away.x / len) * 0.35 * k;
       fz = (away.z / len) * 0.35 * k;
       sc = 1 + 0.12 * k;
+    }
+
+    // Attack lunge: thrust toward the player when striking.
+    const sdt = now - lastStrike.current;
+    if (sdt < 260) {
+      const lng = Math.sin((sdt / 260) * Math.PI) * 0.6;
+      const dx = px - entry.pos[0], dz = pz - entry.pos[2];
+      const L = Math.hypot(dx, dz) || 1;
+      fx += (dx / L) * lng; fz += (dz / L) * lng;
     }
     g.position.set(entry.pos[0] + fx, 0, entry.pos[2] + fz);
     g.scale.setScalar(sc);
@@ -182,6 +193,7 @@ export default function CombatSystem() {
   const addExp = useGame((s) => s.addExp);
   const notify = useGame((s) => s.notify);
   const combo = useRef({ count: 0, until: 0 });
+  const pressSeq = useRef(0); // increments on every attack press → cycles the move
   const { camera } = useThree();
 
   useFrame(() => {
@@ -193,8 +205,10 @@ export default function CombatSystem() {
     const kick = input.consume("kick");
     if (punch || kick) {
       const now = performance.now();
+      pressSeq.current++;
       // pick the move: kick = Tendang(5); punch cycles jab/cross/hook/uppercut(1..4)
-      const moveIdx = kick ? 5 : ((combo.current.count) % 4) + 1;
+      // cycling on EVERY press (not just hits) so the animation always varies.
+      const moveIdx = kick ? 5 : ((pressSeq.current - 1) % 4) + 1;
       if (kick) avatar.kickAt = now; else avatar.punchAt = now;
       avatar.comboCount = moveIdx;
       const dmg = (kick ? KICK_DMG : PUNCH_DMG) * (moveIdx === 4 ? 1.4 : moveIdx === 5 ? 1.3 : 1);
@@ -236,11 +250,12 @@ export default function CombatSystem() {
         }
       } else {
         // 2) try an ordinary pedestrian → they flee and can die
-        const ni = hitNpcNear(px0, pz0, rayDir.x, rayDir.z, PLAYER_REACH, dmg);
-        if (ni >= 0) {
+        const res = hitNpcNear(px0, pz0, rayDir.x, rayDir.z, PLAYER_REACH, dmg);
+        if (res.idx >= 0) {
           combo.current.count = now < combo.current.until ? combo.current.count + 1 : 1;
           combo.current.until = now + 1400;
           landed = true;
+          if (res.killed) { addExp(15); notify("Warga tewas 💀"); }
         }
       }
 
