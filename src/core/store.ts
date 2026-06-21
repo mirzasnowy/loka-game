@@ -90,6 +90,9 @@ interface GameState {
   toast: { id: number; text: string } | null;
   hitMarkerTime: number | null;
 
+  // respawn: Player watches respawnSeq and teleports to spawn when it changes
+  respawnSeq: number;
+
   // --- actions ---
   setBooted: (b: boolean) => void;
   setPaused: (b: boolean) => void;
@@ -128,6 +131,7 @@ interface GameState {
 
   notify: (text: string) => void;
   triggerHitMarker: () => void;
+  respawn: () => void;
   hydrate: (partial: Partial<SaveShape>) => void;
 }
 
@@ -197,6 +201,7 @@ export const useGame = create<GameState>((set, get) => ({
 
   toast: null,
   hitMarkerTime: null,
+  respawnSeq: 0,
 
   setBooted: (booted) => set({ booted }),
   setPaused: (paused) => set({ paused }),
@@ -348,6 +353,14 @@ export const useGame = create<GameState>((set, get) => ({
 
   notify: (text) => set({ toast: { id: toastSeq++, text } }),
   triggerHitMarker: () => set({ hitMarkerTime: performance.now() }),
+
+  respawn: () =>
+    set((s) => ({
+      player: { ...s.player, health: s.player.maxHealth, stamina: s.player.maxStamina },
+      runtime: { ...s.runtime, inVehicleId: null },
+      respawnSeq: s.respawnSeq + 1,
+      toast: { id: toastSeq++, text: "Respawn ✨" },
+    })),
 
   hydrate: (p) =>
     set((s) => ({

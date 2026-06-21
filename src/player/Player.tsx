@@ -44,6 +44,7 @@ export default function Player() {
   const [start] = useState<[number, number, number]>(() => useGame.getState().runtime.pos);
   const jumpCooldown = useRef(0);
   const groundRay = useRef<InstanceType<typeof rapier.Ray> | null>(null);
+  const lastRespawn = useRef(0);
 
   useFrame((_, delta) => {
     input.bind();
@@ -51,6 +52,18 @@ export default function Player() {
     if (st.paused) return;
     const b = body.current;
     if (!b) return;
+
+    // Respawn: teleport to spawn, clear ragdoll/sit, re-enable body.
+    if (st.respawnSeq !== lastRespawn.current) {
+      lastRespawn.current = st.respawnSeq;
+      b.setEnabled(true);
+      b.setTranslation({ x: start[0], y: start[1], z: start[2] }, true);
+      b.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      avatar.knockdownAt = 0;
+      avatar.sitting = false;
+      avatar.knockAt = 0;
+      if (visual.current) visual.current.visible = view.mode !== "fps";
+    }
 
     yaw.current -= input.takeLook();
     pitch.current = Math.max(-0.35, Math.min(1.1, pitch.current - input.takeLookY()));

@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Group, Mesh, Vector3, MeshBasicMaterial } from "three";
-import { Asset } from "@/core/assetRegistry";
+import { Group, Mesh, Vector3, MeshBasicMaterial, MathUtils } from "three";
 import { useGame } from "@/core/store";
 import { input } from "@/core/input";
 import { enemies, type EnemyEntry } from "./registries";
@@ -52,6 +51,11 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
   const blood = useRef<Group>(null!);
   const cooldown = useRef(0);
   const lastStrike = useRef(-999);
+  const pPhase = useRef(0);
+  const pArmL = useRef<Group>(null!);
+  const pArmR = useRef<Group>(null!);
+  const pLegL = useRef<Group>(null!);
+  const pLegR = useRef<Group>(null!);
   const { camera } = useThree();
 
   const entry = useMemo<EnemyEntry>(
@@ -134,6 +138,21 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
     g.position.set(entry.pos[0] + fx, 0, entry.pos[2] + fz);
     g.scale.setScalar(sc);
 
+    // ── Preman rig: walk swing while approaching + jab on strike ──
+    const approaching = dist < AGGRO && dist > ENEMY_REACH;
+    if (approaching) pPhase.current += delta * 9;
+    const sw = approaching ? Math.sin(pPhase.current) * 0.6 : 0;
+    const lsm = 1 - Math.exp(-12 * delta);
+    if (pLegL.current) {
+      pLegL.current.rotation.x = MathUtils.lerp(pLegL.current.rotation.x, sw, lsm);
+      pLegR.current.rotation.x = MathUtils.lerp(pLegR.current.rotation.x, -sw, lsm);
+      pArmL.current.rotation.x = MathUtils.lerp(pArmL.current.rotation.x, -sw * 0.8, lsm);
+      let armRTarget = sw * 0.8;
+      const sdt = now - lastStrike.current;
+      if (sdt < 260) armRTarget = -1.9 * Math.sin((sdt / 260) * Math.PI); // jab forward
+      pArmR.current.rotation.x = MathUtils.lerp(pArmR.current.rotation.x, armRTarget, lsm);
+    }
+
     // HP bar faces camera + blood effect
     if (bar.current) {
       bar.current.lookAt(camera.position);
@@ -158,8 +177,33 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
 
   return (
     <group ref={group} position={spawn.pos}>
-      <Asset id="enemy_preman" />
-      
+      {/* Rigged preman (burly thug) — limbs animate in useFrame */}
+      <group>
+        {/* head + hair */}
+        <mesh position={[0, 1.58, 0]} castShadow><boxGeometry args={[0.4, 0.4, 0.38]} /><meshLambertMaterial color="#b07848" /></mesh>
+        <mesh position={[0, 1.8, 0]}><boxGeometry args={[0.43, 0.14, 0.4]} /><meshLambertMaterial color="#241008" /></mesh>
+        {/* angry brow */}
+        <mesh position={[0, 1.66, 0.2]}><boxGeometry args={[0.34, 0.05, 0.04]} /><meshLambertMaterial color="#1a0c04" /></mesh>
+        {/* torso (singlet) */}
+        <mesh position={[0, 1.12, 0]} castShadow><boxGeometry args={[0.54, 0.66, 0.34]} /><meshLambertMaterial color="#5a2733" /></mesh>
+        {/* arm pivots (bare, muscular) */}
+        <group ref={pArmL} position={[-0.35, 1.36, 0]}>
+          <mesh position={[0, -0.27, 0]} castShadow><boxGeometry args={[0.16, 0.52, 0.18]} /><meshLambertMaterial color="#b07848" /></mesh>
+        </group>
+        <group ref={pArmR} position={[0.35, 1.36, 0]}>
+          <mesh position={[0, -0.27, 0]} castShadow><boxGeometry args={[0.16, 0.52, 0.18]} /><meshLambertMaterial color="#b07848" /></mesh>
+        </group>
+        {/* leg pivots */}
+        <group ref={pLegL} position={[-0.14, 0.76, 0]}>
+          <mesh position={[0, -0.3, 0]} castShadow><boxGeometry args={[0.2, 0.6, 0.24]} /><meshLambertMaterial color="#2c2c38" /></mesh>
+          <mesh position={[0, -0.62, 0.06]}><boxGeometry args={[0.19, 0.13, 0.32]} /><meshLambertMaterial color="#1a1410" /></mesh>
+        </group>
+        <group ref={pLegR} position={[0.14, 0.76, 0]}>
+          <mesh position={[0, -0.3, 0]} castShadow><boxGeometry args={[0.2, 0.6, 0.24]} /><meshLambertMaterial color="#2c2c38" /></mesh>
+          <mesh position={[0, -0.62, 0.06]}><boxGeometry args={[0.19, 0.13, 0.32]} /><meshLambertMaterial color="#1a1410" /></mesh>
+        </group>
+      </group>
+
       {/* Blood burst effect */}
       <group ref={blood} visible={false}>
         <mesh position={[0.2, 0, 0.1]} rotation={[0.2, 0.4, 0]}>
