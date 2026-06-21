@@ -14,55 +14,80 @@ import {
 const tmp = new Object3D();
 const tmpColor = new Color();
 
-// ─── Buildings (body + roof + window glass) ──────────────────────────────────
+// ─── Buildings (body + roof + glass facade + tall entrance + rooftop unit) ───
 function Buildings() {
-  const bodyRef = useRef<InstancedMesh>(null!);
-  const roofRef = useRef<InstancedMesh>(null!);
-  const winRef  = useRef<InstancedMesh>(null!);
+  const bodyRef  = useRef<InstancedMesh>(null!);
+  const roofRef  = useRef<InstancedMesh>(null!);
+  const winRef   = useRef<InstancedMesh>(null!);   // window/glass facade overlay (4 sides via duplication on +Z/-Z)
+  const win2Ref  = useRef<InstancedMesh>(null!);   // side facade (+X face)
+  const doorRef  = useRef<InstancedMesh>(null!);   // tall ground-floor glass entrance
+  const acRef    = useRef<InstancedMesh>(null!);   // rooftop unit
   const data = useMemo(() => generateCity().buildings, []);
+  const HIDE = -9000;
 
   useLayoutEffect(() => {
     data.forEach((b, i) => {
-      tmp.position.set(b.x, b.h / 2, b.z);
-      tmp.rotation.set(0, 0, 0);
-      tmp.scale.set(b.w, b.h, b.d);
-      tmp.updateMatrix();
+      // body
+      tmp.position.set(b.x, b.h / 2, b.z); tmp.rotation.set(0, 0, 0); tmp.scale.set(b.w, b.h, b.d); tmp.updateMatrix();
       bodyRef.current.setMatrixAt(i, tmp.matrix);
       bodyRef.current.setColorAt(i, tmpColor.set(b.color));
 
-      tmp.position.set(b.x, b.h + 0.45, b.z);
-      tmp.scale.set(b.w * 0.92, 0.9, b.d * 0.92);
-      tmp.updateMatrix();
+      // roof cap (ruko gets a colored awning-ish darker roof)
+      tmp.position.set(b.x, b.h + 0.45, b.z); tmp.scale.set(b.w * 0.94, 0.9, b.d * 0.94); tmp.updateMatrix();
       roofRef.current.setMatrixAt(i, tmp.matrix);
-      roofRef.current.setColorAt(i, tmpColor.set(b.color).multiplyScalar(0.6));
+      roofRef.current.setColorAt(i, tmpColor.set(b.color).multiplyScalar(0.58));
 
-      // window glass strip on the +Z (south) face
-      tmp.position.set(b.x, b.h * 0.54, b.z + b.d * 0.503);
-      tmp.rotation.set(0, 0, 0);
-      tmp.scale.set(b.w * 0.82, b.h * 0.66, 1);
-      tmp.updateMatrix();
-      winRef.current.setMatrixAt(i, tmp.matrix);
-      winRef.current.setColorAt(i, tmpColor.set(b.kind === "office" ? "#a4d2ee" : "#f6edbc"));
+      // glass facade coverage by style
+      const cover = b.style === "glass" ? 0.92 : b.kind === "office" ? 0.8 : 0.66;
+      const hcov  = b.style === "glass" ? 0.94 : b.kind === "office" ? 0.7 : 0.5;
+      const glassCol = b.style === "glass" ? "#cfeaf8" : b.kind === "office" ? "#a4d2ee" : "#f6edbc";
+
+      // facade on +Z
+      tmp.position.set(b.x, b.h * 0.54, b.z + b.d * 0.503); tmp.rotation.set(0, 0, 0); tmp.scale.set(b.w * cover, b.h * hcov, 1); tmp.updateMatrix();
+      winRef.current.setMatrixAt(i, tmp.matrix); winRef.current.setColorAt(i, tmpColor.set(glassCol));
+      // facade on +X (rotated)
+      tmp.position.set(b.x + b.w * 0.503, b.h * 0.54, b.z); tmp.rotation.set(0, Math.PI / 2, 0); tmp.scale.set(b.d * cover, b.h * hcov, 1); tmp.updateMatrix();
+      win2Ref.current.setMatrixAt(i, tmp.matrix); win2Ref.current.setColorAt(i, tmpColor.set(glassCol));
+
+      // tall ground-floor glass entrance (the "kaca pintu menjulang")
+      const doorH = Math.min(b.h * 0.32, 5.5);
+      tmp.position.set(b.x, doorH / 2 + 0.1, b.z + b.d * 0.505); tmp.rotation.set(0, 0, 0); tmp.scale.set(b.w * 0.42, doorH, 1); tmp.updateMatrix();
+      doorRef.current.setMatrixAt(i, tmp.matrix); doorRef.current.setColorAt(i, tmpColor.set("#274a66"));
+
+      // rooftop AC/water unit for taller buildings
+      if (b.h > 18) {
+        tmp.position.set(b.x + b.w * 0.18, b.h + 1.4, b.z - b.d * 0.12); tmp.rotation.set(0, 0, 0); tmp.scale.set(b.w * 0.3, 1.6, b.d * 0.3); tmp.updateMatrix();
+      } else {
+        tmp.position.set(0, HIDE, 0); tmp.scale.setScalar(0.001); tmp.updateMatrix();
+      }
+      acRef.current.setMatrixAt(i, tmp.matrix); acRef.current.setColorAt(i, tmpColor.set("#aab0b8"));
     });
-    [bodyRef, roofRef, winRef].forEach((r) => {
+    [bodyRef, roofRef, winRef, win2Ref, doorRef, acRef].forEach((r) => {
       r.current.instanceMatrix.needsUpdate = true;
       if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true;
     });
   }, [data]);
 
+  const n = data.length;
   return (
     <>
-      <instancedMesh ref={bodyRef} args={[undefined, undefined, data.length]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshLambertMaterial vertexColors />
+      <instancedMesh ref={bodyRef} args={[undefined, undefined, n]} castShadow receiveShadow>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
       </instancedMesh>
-      <instancedMesh ref={roofRef} args={[undefined, undefined, data.length]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshLambertMaterial vertexColors />
+      <instancedMesh ref={roofRef} args={[undefined, undefined, n]} castShadow receiveShadow>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
       </instancedMesh>
-      <instancedMesh ref={winRef} args={[undefined, undefined, data.length]}>
-        <planeGeometry args={[1, 1]} />
-        <meshLambertMaterial vertexColors transparent opacity={0.6} />
+      <instancedMesh ref={winRef} args={[undefined, undefined, n]}>
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial vertexColors transparent opacity={0.62} />
+      </instancedMesh>
+      <instancedMesh ref={win2Ref} args={[undefined, undefined, n]}>
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial vertexColors transparent opacity={0.62} />
+      </instancedMesh>
+      <instancedMesh ref={doorRef} args={[undefined, undefined, n]}>
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial vertexColors transparent opacity={0.85} />
+      </instancedMesh>
+      <instancedMesh ref={acRef} args={[undefined, undefined, n]} castShadow>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
       </instancedMesh>
     </>
   );
@@ -327,19 +352,15 @@ function FlowerPot({ pos }: { pos: [number, number, number] }) {
 }
 
 function MonasPark() {
-  const ring = Array.from({ length: 28 }, (_, k) => {
+  // Everything sits OUTSIDE the 48m monument base (corners reach r≈34).
+  const ringB = Array.from({ length: 28 }, (_, k) => {
     const a = (k / 28) * Math.PI * 2;
-    return [Math.cos(a) * (PARK_RADIUS - 2), 0.45, Math.sin(a) * (PARK_RADIUS - 2)] as [number, number, number];
+    return [Math.cos(a) * (PARK_RADIUS - 1.5), 0.45, Math.sin(a) * (PARK_RADIUS - 1.5)] as [number, number, number];
   });
-  const innerB = Array.from({ length: 16 }, (_, k) => {
-    const a = (k / 16) * Math.PI * 2;
-    return [Math.cos(a) * 12.5, 0.45, Math.sin(a) * 12.5] as [number, number, number];
+  const pots: [number, number, number][] = Array.from({ length: 8 }, (_, k) => {
+    const a = (k / 8) * Math.PI * 2 + 0.4;
+    return [Math.cos(a) * 31, 0, Math.sin(a) * 31] as [number, number, number];
   });
-  const pots: [number, number, number][] = [
-    [14, 0, 0], [-14, 0, 0], [0, 0, 14], [0, 0, -14],
-    [10, 0, 10], [-10, 0, 10], [10, 0, -10], [-10, 0, -10],
-    [22, 0, 0], [-22, 0, 0], [0, 0, 22], [0, 0, -22],
-  ];
 
   return (
     <group>
@@ -353,33 +374,19 @@ function MonasPark() {
         <circleGeometry args={[PARK_RADIUS, 48]} />
         <meshLambertMaterial color="#4aaa38" />
       </mesh>
-      {/* Pathways */}
+      {/* Perimeter pathway ring (outside monument) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
-        <ringGeometry args={[21, 24, 44]} /><meshLambertMaterial color="#cdc5b2" />
+        <ringGeometry args={[35, 38, 48]} /><meshLambertMaterial color="#cdc5b2" />
       </mesh>
+      {/* Four approach paths from monument plaza to the ring */}
       {[0, Math.PI / 2, Math.PI, Math.PI * 1.5].map((a, i) => (
         <mesh key={i} rotation={[-Math.PI / 2, 0, a]} position={[0, 0.06, 0]}>
-          <planeGeometry args={[4.5, PARK_RADIUS * 0.92]} /><meshLambertMaterial color="#cdc5b2" />
+          <planeGeometry args={[5, PARK_RADIUS * 2 * 0.92]} /><meshLambertMaterial color="#cdc5b2" />
         </mesh>
       ))}
-      {/* Central plaza */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]}>
-        <circleGeometry args={[10, 24]} /><meshLambertMaterial color="#d8d0bc" />
-      </mesh>
-      {/* Fountain */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.08, 0]}>
-        <circleGeometry args={[4, 24]} /><meshLambertMaterial color="#5ab8d8" />
-      </mesh>
-      <mesh position={[0, 0.28, 0]}><torusGeometry args={[4, 0.22, 6, 24]} /><meshLambertMaterial color="#d0c8b0" /></mesh>
-      <mesh position={[0, 0.9, 0]}><cylinderGeometry args={[0.2, 0.28, 1.6, 8]} /><meshLambertMaterial color="#d8d0bc" /></mesh>
-      <mesh position={[0, 2.0, 0]}><sphereGeometry args={[0.55, 9, 7]} /><meshLambertMaterial color="#80d8f8" transparent opacity={0.75} /></mesh>
-      {[0, 1, 2, 3, 4, 5].map((k) => {
-        const a = (k / 6) * Math.PI * 2;
-        return <mesh key={k} position={[Math.cos(a) * 2, 1.5, Math.sin(a) * 2]}><sphereGeometry args={[0.18, 6, 5]} /><meshLambertMaterial color="#a0e8ff" transparent opacity={0.8} /></mesh>;
-      })}
-      {/* Benches */}
-      {Array.from({ length: 8 }, (_, k) => {
-        const a = (k / 8) * Math.PI * 2, r = 17.5;
+      {/* Benches facing the monument, just inside the perimeter ring */}
+      {Array.from({ length: 12 }, (_, k) => {
+        const a = (k / 12) * Math.PI * 2 + 0.26, r = 33;
         return (
           <group key={k} position={[Math.cos(a) * r, 0, Math.sin(a) * r]} rotation={[0, a + Math.PI / 2, 0]}>
             <mesh position={[0, 0.5, 0]}><boxGeometry args={[1.4, 0.1, 0.42]} /><meshLambertMaterial color="#9a6838" /></mesh>
@@ -388,14 +395,24 @@ function MonasPark() {
           </group>
         );
       })}
-      {ring.map((p, i) => <Bollard key={`b${i}`} pos={p} />)}
-      {innerB.map((p, i) => <Bollard key={`ib${i}`} pos={p} />)}
+      {ringB.map((p, i) => <Bollard key={`b${i}`} pos={p} />)}
       {pots.map((p, i) => <FlowerPot key={`p${i}`} pos={p} />)}
-      {/* Flagpole */}
-      <mesh position={[8, 8, 0]} castShadow><cylinderGeometry args={[0.07, 0.1, 16, 6]} /><meshLambertMaterial color="#d8d4c8" /></mesh>
-      <mesh position={[9, 15.2, 0]}><planeGeometry args={[2, 0.65]} /><meshLambertMaterial color="#cb2026" side={2} /></mesh>
-      <mesh position={[9, 14.82, 0]}><planeGeometry args={[2, 0.65]} /><meshLambertMaterial color="#ffffff" side={2} /></mesh>
     </group>
+  );
+}
+
+// ─── Indonesian street structures (halte + KRL station) ──────────────────────
+function StreetProps() {
+  return (
+    <>
+      {/* Bus stops along main roads, facing the carriageway */}
+      <Asset id="halte" position={[-30, 0, 41]} />
+      <Asset id="halte" position={[55, 0, -24]} rotation={[0, -Math.PI / 2, 0]} />
+      <Asset id="halte" position={[89, 0, 12]} rotation={[0, Math.PI / 2, 0]} />
+      <Asset id="halte" position={[-41, 0, -76]} rotation={[0, Math.PI / 2, 0]} />
+      {/* KRL commuter station on a buildable block */}
+      <Asset id="station" position={[122, 0, 122]} rotation={[0, Math.PI, 0]} />
+    </>
   );
 }
 
@@ -437,6 +454,7 @@ export default function World() {
       <Trees />
       <StreetLamps />
       <MonasPark />
+      <StreetProps />
 
       <Asset id="monas" position={[0, 0, 0]} />
       <DistrictLabels />

@@ -2,59 +2,85 @@
 
 import { registerAsset, type PlaceholderProps } from "@/core/assetRegistry";
 
-// ─── Monas Monument ───────────────────────────────────────────────────────────
+// ─── Monas Monument (precise proportions, ~132m to the flame) ────────────────
+// Real Monas: square stepped pelataran, a tall square marble obelisk that tapers
+// only slightly, the flared "cawan" (cup), and the gold-leaf flame at the top.
+// Square cross-sections use a 4-sided cylinder rotated 45°.
+const MARBLE = "#f2efe6";
+const MARBLE_D = "#e2ded0";
+const GOLD = "#e3b020";
+
 function Monas(props: PlaceholderProps) {
   return (
     <group {...props}>
-      {/* Outer base platform */}
-      <mesh position={[0, 0.75, 0]} castShadow receiveShadow>
-        <boxGeometry args={[26, 1.5, 26]} />
-        <meshLambertMaterial color="#d8d0c0" />
+      {/* ── Pelataran: wide stepped square base ── */}
+      <mesh position={[0, 0.6, 0]} castShadow receiveShadow>
+        <boxGeometry args={[48, 1.2, 48]} /><meshLambertMaterial color={MARBLE_D} />
       </mesh>
-      {/* Inner raised base */}
-      <mesh position={[0, 1.75, 0]} castShadow receiveShadow>
-        <boxGeometry args={[20, 0.5, 20]} />
-        <meshLambertMaterial color="#e0dace" />
+      <mesh position={[0, 1.7, 0]} castShadow receiveShadow>
+        <boxGeometry args={[38, 1.2, 38]} /><meshLambertMaterial color="#eceadf" />
       </mesh>
-      {/* Base block / museum room */}
-      <mesh position={[0, 4.5, 0]} castShadow>
-        <boxGeometry args={[17, 5, 17]} />
-        <meshLambertMaterial color="#ece8dc" />
+      <mesh position={[0, 2.7, 0]} castShadow receiveShadow>
+        <boxGeometry args={[30, 1.0, 30]} /><meshLambertMaterial color={MARBLE} />
       </mesh>
-      {/* Step / plinth top */}
-      <mesh position={[0, 7.2, 0]} castShadow>
-        <boxGeometry args={[14, 0.5, 14]} />
-        <meshLambertMaterial color="#f0ece0" />
+
+      {/* ── Cawan / base hall (square block housing the museum) ── */}
+      <mesh position={[0, 6.5, 0]} castShadow>
+        <boxGeometry args={[22, 7, 22]} /><meshLambertMaterial color={MARBLE} />
       </mesh>
-      {/* Obelisk shaft — tapered, 8-sided */}
-      <mesh position={[0, 73, 0]} castShadow>
-        <cylinderGeometry args={[1.2, 3.6, 132, 8]} />
-        <meshLambertMaterial color="#f4f1e8" />
+      {/* recessed vertical grooves (4 faces) */}
+      {[0, Math.PI / 2, Math.PI, Math.PI * 1.5].map((a, i) => (
+        <mesh key={i} position={[Math.sin(a) * 11.1, 6.5, Math.cos(a) * 11.1]} rotation={[0, a, 0]}>
+          <boxGeometry args={[16, 6, 0.3]} /><meshLambertMaterial color={MARBLE_D} />
+        </mesh>
+      ))}
+      {/* cornice */}
+      <mesh position={[0, 10.4, 0]} castShadow>
+        <boxGeometry args={[24, 0.8, 24]} /><meshLambertMaterial color="#f6f3ea" />
       </mesh>
-      {/* Neck transition */}
-      <mesh position={[0, 138, 0]} castShadow>
-        <cylinderGeometry args={[2.0, 1.4, 4, 8]} />
-        <meshLambertMaterial color="#ece8d8" />
+
+      {/* ── Plinth that the shaft rises from ── */}
+      <mesh position={[0, 11.4, 0]} castShadow>
+        <boxGeometry args={[12, 1.4, 12]} /><meshLambertMaterial color={MARBLE} />
       </mesh>
-      {/* Gold cupola */}
-      <mesh position={[0, 142, 0]} castShadow>
-        <cylinderGeometry args={[2.2, 2.2, 2.5, 12]} />
-        <meshLambertMaterial color="#d4a018" emissive="#a07008" emissiveIntensity={0.3} />
+
+      {/* ── Obelisk shaft: tall square, very slight taper (square via 4-gon) ── */}
+      <mesh position={[0, 67, 0]} rotation={[0, Math.PI / 4, 0]} castShadow>
+        <cylinderGeometry args={[3.3, 4.4, 110, 4]} />
+        <meshLambertMaterial color={MARBLE} />
       </mesh>
-      {/* Flame base */}
-      <mesh position={[0, 144.8, 0]} castShadow>
-        <sphereGeometry args={[2.2, 10, 8]} />
-        <meshLambertMaterial color="#d4a018" emissive="#c08000" emissiveIntensity={0.4} />
+      {/* corner edge highlights for crisp silhouette */}
+      <mesh position={[0, 67, 0]} rotation={[0, 0, 0]} castShadow>
+        <cylinderGeometry args={[3.0, 4.0, 110.2, 4]} />
+        <meshLambertMaterial color={MARBLE_D} />
       </mesh>
-      {/* Gold flame */}
-      <mesh position={[0, 150, 0]} castShadow>
-        <coneGeometry args={[1.8, 12, 8]} />
-        <meshLambertMaterial color="#e8b020" emissive="#c08000" emissiveIntensity={0.6} />
+
+      {/* ── Cawan: flared cup holding the flame ── */}
+      <mesh position={[0, 123, 0]} rotation={[0, Math.PI / 4, 0]} castShadow>
+        <cylinderGeometry args={[5.0, 3.0, 6, 4]} />
+        <meshLambertMaterial color="#f6f3ea" />
       </mesh>
-      {/* Tip glow */}
-      <mesh position={[0, 156.5, 0]}>
-        <sphereGeometry args={[0.7, 6, 5]} />
-        <meshLambertMaterial color="#ffe060" emissive="#ffb000" emissiveIntensity={1.2} />
+      <mesh position={[0, 126.5, 0]} castShadow>
+        <cylinderGeometry args={[3.6, 5.0, 2.2, 12]} />
+        <meshLambertMaterial color={MARBLE_D} />
+      </mesh>
+
+      {/* ── Gold flame (lidah api) ── */}
+      <mesh position={[0, 128.6, 0]} castShadow>
+        <cylinderGeometry args={[2.0, 3.0, 2.0, 12]} />
+        <meshLambertMaterial color={GOLD} emissive="#a87010" emissiveIntensity={0.35} />
+      </mesh>
+      <mesh position={[0, 131.5, 0]} castShadow>
+        <sphereGeometry args={[2.1, 12, 10]} />
+        <meshLambertMaterial color={GOLD} emissive="#b07810" emissiveIntensity={0.45} />
+      </mesh>
+      <mesh position={[0, 135.5, 0]} castShadow>
+        <coneGeometry args={[1.7, 7, 10]} />
+        <meshLambertMaterial color="#f0c030" emissive="#c08800" emissiveIntensity={0.6} />
+      </mesh>
+      <mesh position={[0, 139.8, 0]}>
+        <sphereGeometry args={[0.6, 8, 6]} />
+        <meshLambertMaterial color="#ffe87a" emissive="#ffbf20" emissiveIntensity={1.3} />
       </mesh>
     </group>
   );
@@ -388,40 +414,137 @@ function Bus(props: PlaceholderProps) {
   );
 }
 
-// ─── Vendor Cart ──────────────────────────────────────────────────────────────
-function VendorCart(props: PlaceholderProps) {
+// ─── Street-food carts (kaki lima) — distinct per dagangan ───────────────────
+function makeCart(canopy: string, sign: string, bowl: string) {
+  return function Cart(props: PlaceholderProps) {
+    return (
+      <group {...props}>
+        {/* Glass display box (gerobak) */}
+        <mesh position={[0, 0.78, 0]} castShadow>
+          <boxGeometry args={[1.8, 0.7, 0.85]} />
+          <meshLambertMaterial color="#9c6b3f" />
+        </mesh>
+        {/* Glass upper case */}
+        <mesh position={[0, 1.28, 0]}>
+          <boxGeometry args={[1.7, 0.42, 0.78]} />
+          <meshLambertMaterial color="#bfe6f4" transparent opacity={0.55} />
+        </mesh>
+        {/* Glass frame */}
+        <mesh position={[0, 1.06, 0]}>
+          <boxGeometry args={[1.84, 0.06, 0.9]} />
+          <meshLambertMaterial color="#c87840" />
+        </mesh>
+        {/* Food bowls/pots on top */}
+        {[-0.5, 0, 0.5].map((x) => (
+          <mesh key={x} position={[x, 1.56, 0]}>
+            <cylinderGeometry args={[0.18, 0.16, 0.18, 10]} />
+            <meshLambertMaterial color={bowl} />
+          </mesh>
+        ))}
+        {/* Steam puff */}
+        <mesh position={[0, 1.78, 0]}>
+          <sphereGeometry args={[0.16, 6, 5]} />
+          <meshLambertMaterial color="#ffffff" transparent opacity={0.4} />
+        </mesh>
+        {/* Posts */}
+        {[-0.8, 0.8].map((x) => (
+          <mesh key={x} position={[x, 2.0, 0]}>
+            <cylinderGeometry args={[0.04, 0.04, 1.5, 6]} />
+            <meshLambertMaterial color="#6a4020" />
+          </mesh>
+        ))}
+        {/* Tarpaulin canopy (terpal) */}
+        <mesh position={[0, 2.78, 0]} castShadow>
+          <boxGeometry args={[2.2, 0.12, 1.2]} />
+          <meshLambertMaterial color={canopy} />
+        </mesh>
+        {/* Scalloped canopy front */}
+        <mesh position={[0, 2.66, 0.62]}>
+          <boxGeometry args={[2.2, 0.22, 0.05]} />
+          <meshLambertMaterial color={canopy} />
+        </mesh>
+        {/* Signboard with accent color (stands for the dagangan name) */}
+        <mesh position={[0, 2.46, 0.66]}>
+          <boxGeometry args={[1.3, 0.32, 0.05]} />
+          <meshLambertMaterial color={sign} />
+        </mesh>
+        <mesh position={[0, 2.46, 0.69]}>
+          <boxGeometry args={[1.0, 0.16, 0.03]} />
+          <meshLambertMaterial color="#ffffff" />
+        </mesh>
+        {/* Wheels */}
+        {[-0.7, 0.7].map((x) => (
+          <mesh key={x} position={[x, 0.26, 0.46]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+            <cylinderGeometry args={[0.26, 0.26, 0.10, 12]} />
+            <meshLambertMaterial color="#444" />
+          </mesh>
+        ))}
+        {/* Handle */}
+        <mesh position={[1.0, 0.9, 0]} rotation={[0, 0, 0.5]}>
+          <cylinderGeometry args={[0.03, 0.03, 0.7, 6]} />
+          <meshLambertMaterial color="#5a3a20" />
+        </mesh>
+      </group>
+    );
+  };
+}
+
+// ─── Halte (bus stop shelter) ────────────────────────────────────────────────
+function Halte(props: PlaceholderProps) {
   return (
     <group {...props}>
-      {/* Cart body */}
-      <mesh position={[0, 0.72, 0]} castShadow>
-        <boxGeometry args={[1.8, 0.9, 0.9]} />
-        <meshLambertMaterial color="#9c6b3f" />
-      </mesh>
-      {/* Counter top */}
-      <mesh position={[0, 1.18, 0]}>
-        <boxGeometry args={[1.9, 0.08, 1.0]} />
-        <meshLambertMaterial color="#c87840" />
-      </mesh>
-      {/* Parasol post */}
-      <mesh position={[0, 2.0, 0]}>
-        <cylinderGeometry args={[0.05, 0.05, 1.7, 6]} />
-        <meshLambertMaterial color="#6a4020" />
-      </mesh>
-      {/* Parasol canopy */}
-      <mesh position={[0, 2.9, 0]}>
-        <coneGeometry args={[1.6, 0.5, 8]} />
-        <meshLambertMaterial color="#e03820" />
-      </mesh>
-      <mesh position={[0, 2.65, 0]}>
-        <cylinderGeometry args={[1.6, 1.6, 0.08, 8]} />
-        <meshLambertMaterial color="#e03820" />
-      </mesh>
-      {/* Wheels */}
-      {[-0.7, 0.7].map((x) => (
-        <mesh key={x} position={[x, 0.24, 0.48]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.24, 0.24, 0.10, 12]} />
-          <meshLambertMaterial color="#333" />
-        </mesh>
+      {/* Platform */}
+      <mesh position={[0, 0.1, 0]} receiveShadow><boxGeometry args={[5, 0.2, 2]} /><meshLambertMaterial color="#b8b4ac" /></mesh>
+      {/* Back wall (glass) */}
+      <mesh position={[0, 1.3, -0.9]}><boxGeometry args={[5, 2.2, 0.1]} /><meshLambertMaterial color="#bfe0f0" transparent opacity={0.55} /></mesh>
+      {/* Posts */}
+      {[-2.3, 2.3].map((x) => (
+        <mesh key={x} position={[x, 1.4, 0.8]} castShadow><boxGeometry args={[0.16, 2.8, 0.16]} /><meshLambertMaterial color="#3a6ea5" /></mesh>
+      ))}
+      {[-2.3, 2.3].map((x) => (
+        <mesh key={`b${x}`} position={[x, 1.4, -0.85]}><boxGeometry args={[0.16, 2.8, 0.16]} /><meshLambertMaterial color="#3a6ea5" /></mesh>
+      ))}
+      {/* Roof */}
+      <mesh position={[0, 2.85, 0]} castShadow><boxGeometry args={[5.4, 0.2, 2.4]} /><meshLambertMaterial color="#2f5f96" /></mesh>
+      {/* Bench */}
+      <mesh position={[0, 0.55, -0.5]}><boxGeometry args={[4, 0.12, 0.5]} /><meshLambertMaterial color="#9a6838" /></mesh>
+      {[-1.6, 0, 1.6].map((x) => (
+        <mesh key={x} position={[x, 0.32, -0.5]}><boxGeometry args={[0.1, 0.45, 0.5]} /><meshLambertMaterial color="#7a5028" /></mesh>
+      ))}
+      {/* Sign pylon "HALTE" */}
+      <mesh position={[3.1, 1.6, 0.7]}><cylinderGeometry args={[0.07, 0.07, 3.2, 6]} /><meshLambertMaterial color="#888" /></mesh>
+      <mesh position={[3.1, 3.0, 0.7]}><boxGeometry args={[1.0, 0.5, 0.08]} /><meshLambertMaterial color="#1f6fb2" /></mesh>
+      <mesh position={[3.1, 3.0, 0.75]}><boxGeometry args={[0.8, 0.22, 0.03]} /><meshLambertMaterial color="#ffffff" /></mesh>
+    </group>
+  );
+}
+
+// ─── Stasiun KRL (commuter station) ──────────────────────────────────────────
+function Station(props: PlaceholderProps) {
+  return (
+    <group {...props}>
+      {/* Main hall */}
+      <mesh position={[0, 4, 0]} castShadow receiveShadow><boxGeometry args={[24, 8, 12]} /><meshLambertMaterial color="#e8e0d0" /></mesh>
+      {/* Glass front facade */}
+      <mesh position={[0, 4, 6.05]}><planeGeometry args={[22, 6.5]} /><meshLambertMaterial color="#9cc8e6" transparent opacity={0.6} /></mesh>
+      {/* Entrance canopy */}
+      <mesh position={[0, 3.2, 7.2]} castShadow><boxGeometry args={[14, 0.4, 3]} /><meshLambertMaterial color="#c0392b" /></mesh>
+      {[-6, 0, 6].map((x) => (
+        <mesh key={x} position={[x, 1.6, 8.4]} castShadow><boxGeometry args={[0.3, 3.2, 0.3]} /><meshLambertMaterial color="#9a4034" /></mesh>
+      ))}
+      {/* Roof */}
+      <mesh position={[0, 8.3, 0]} castShadow><boxGeometry args={[25, 0.6, 13]} /><meshLambertMaterial color="#b04030" /></mesh>
+      {/* Signboard */}
+      <mesh position={[0, 6.8, 6.2]}><boxGeometry args={[8, 1.2, 0.2]} /><meshLambertMaterial color="#1a3a6a" /></mesh>
+      <mesh position={[0, 6.8, 6.32]}><boxGeometry args={[6.5, 0.5, 0.05]} /><meshLambertMaterial color="#ffffff" /></mesh>
+      {/* Platform roof (rail side) */}
+      <mesh position={[0, 5, -10]} castShadow><boxGeometry args={[30, 0.3, 6]} /><meshLambertMaterial color="#8aa0b0" /></mesh>
+      {[-12, -4, 4, 12].map((x) => (
+        <mesh key={x} position={[x, 2.6, -10]}><boxGeometry args={[0.3, 5, 0.3]} /><meshLambertMaterial color="#778896" /></mesh>
+      ))}
+      {/* Rails */}
+      {[-11.5, -8.5].map((z) => (
+        <mesh key={z} position={[0, 0.15, z]}><boxGeometry args={[34, 0.12, 0.18]} /><meshLambertMaterial color="#8a8a90" /></mesh>
       ))}
     </group>
   );
@@ -495,6 +618,16 @@ export function registerPlaceholders() {
   registerAsset("veh_pickup",    { placeholder: makeCar("#4070a8", 4.6, 1.88, 0.68, 0.62, -0.28) });
   registerAsset("veh_bus",       { placeholder: Bus });
 
-  // Props
-  registerAsset("vendor_cart", { placeholder: VendorCart });
+  // Street-food carts — distinct canopy + sign + bowl color per dagangan
+  registerAsset("cart_bakso",  { placeholder: makeCart("#e03820", "#b02818", "#d8c0a0") });
+  registerAsset("cart_somay",  { placeholder: makeCart("#2f9e44", "#1f7a32", "#e8d040") });
+  registerAsset("cart_cilok",  { placeholder: makeCart("#f0a020", "#c87810", "#a06030") });
+  registerAsset("cart_esteh",  { placeholder: makeCart("#1f8fd0", "#1670a8", "#caa050") });
+  registerAsset("cart_nasgor", { placeholder: makeCart("#d83838", "#a02020", "#e8c060") });
+  // back-compat alias
+  registerAsset("vendor_cart", { placeholder: makeCart("#e03820", "#b02818", "#d8c0a0") });
+
+  // Street structures
+  registerAsset("halte",   { placeholder: Halte });
+  registerAsset("station", { placeholder: Station });
 }

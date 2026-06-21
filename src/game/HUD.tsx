@@ -117,6 +117,7 @@ function Toast() {
 function MobileControls() {
   return (
     <>
+      <LookPad />
       <Joystick />
       <div style={{ position: "absolute", right: 16, bottom: 24, display: "grid", gridTemplateColumns: "60px 60px", gap: 10, pointerEvents: "auto" }}>
         <ActBtn action="kick" label="Tendang" color="#8e24aa" />
@@ -127,6 +128,34 @@ function MobileControls() {
         <ActBtn action="interact" label="Aksi (E)" color="#2e7d32" />
       </div>
     </>
+  );
+}
+
+/**
+ * Touch look-pad: drag anywhere on the right side to orbit the camera up/down/
+ * left/right. Mouse events fall through to the global drag-look so desktop is
+ * unchanged. Uses pointer capture so a finger can pan smoothly without losing
+ * track, and coexists with the movement joystick (separate pointer).
+ */
+function LookPad() {
+  const last = useRef<{ x: number; y: number } | null>(null);
+  return (
+    <div
+      data-ui="1"
+      onPointerDown={(e) => {
+        if (e.pointerType !== "touch") return; // desktop uses mouse drag
+        e.currentTarget.setPointerCapture(e.pointerId);
+        last.current = { x: e.clientX, y: e.clientY };
+      }}
+      onPointerMove={(e) => {
+        if (!last.current) return;
+        input.addLook(e.clientX - last.current.x, e.clientY - last.current.y);
+        last.current = { x: e.clientX, y: e.clientY };
+      }}
+      onPointerUp={() => { last.current = null; }}
+      onPointerCancel={() => { last.current = null; }}
+      style={{ position: "absolute", right: 0, top: 0, width: "55%", height: "68%", pointerEvents: "auto", touchAction: "none" }}
+    />
   );
 }
 

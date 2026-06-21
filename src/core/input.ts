@@ -14,6 +14,7 @@ class InputState {
   run = false;
   block = false;
   lookDx = 0; // accumulated horizontal look delta, consumed by camera
+  lookDy = 0; // accumulated vertical look delta (pitch), consumed by camera
   iframeUntil = 0; // performance.now() ms until which dodge grants invulnerability
   private pressed = new Set<Action>();
   private bound = false;
@@ -32,6 +33,16 @@ class InputState {
     const d = this.lookDx;
     this.lookDx = 0;
     return d;
+  }
+  takeLookY(): number {
+    const d = this.lookDy;
+    this.lookDy = 0;
+    return d;
+  }
+  /** Mobile look pad: accumulate a drag delta in pixels. */
+  addLook(dxPx: number, dyPx: number) {
+    this.lookDx += dxPx * 0.006;
+    this.lookDy += dyPx * 0.006;
   }
 
   bind() {
@@ -60,21 +71,26 @@ class InputState {
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
 
-    // Mouse: drag to look, LMB punch, RMB block.
+    // Mouse: drag to look (both axes), RMB block. Touch look handled by HUD pad.
     let dragging = false;
     let lastX = 0;
+    let lastY = 0;
     window.addEventListener("pointerdown", (e) => {
-      if ((e.target as HTMLElement)?.dataset?.ui) return; // ignore UI buttons
+      if ((e.target as HTMLElement)?.dataset?.ui) return; // ignore UI buttons/pads
+      if (e.pointerType === "touch") return; // mobile uses the look pad
       if (e.button === 2) this.block = true;
       else {
         dragging = true;
         lastX = e.clientX;
+        lastY = e.clientY;
       }
     });
     window.addEventListener("pointermove", (e) => {
       if (dragging) {
         this.lookDx += (e.clientX - lastX) * 0.005;
+        this.lookDy += (e.clientY - lastY) * 0.005;
         lastX = e.clientX;
+        lastY = e.clientY;
       }
     });
     window.addEventListener("pointerup", (e) => {

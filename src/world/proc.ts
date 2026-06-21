@@ -22,9 +22,12 @@ export interface Building {
   d: number;
   h: number;
   color: string;
-  /** "office" → blue glass windows; "home" → warm windows. */
   kind: "office" | "home";
+  /** glass = curtain-wall tower, ruko = low shophouse, block = plain. */
+  style: "glass" | "block" | "ruko";
 }
+
+const GLASS_COLORS = ["#7fb8e0", "#8fc6e8", "#6aa8d4", "#a0d0ee", "#79c0c8"];
 
 export interface TreePos {
   x: number;
@@ -70,10 +73,18 @@ export function generateCity(): { buildings: Building[]; trees: TreePos[] } {
       const h = baseH * d.density * (0.55 + falloff) + rng() * 5;
       const w = 8 + rng() * 4;
       const dpt = 8 + rng() * 4;
-      const colorIdx = Math.floor(rng() * d.colors.length);
-      const kind: Building["kind"] = h > 26 ? "office" : rng() > 0.5 ? "office" : "home";
 
-      buildings.push({ x: cx, z: cz, w, d: dpt, h, color: d.colors[colorIdx], kind });
+      let style: Building["style"];
+      if (h < 13) style = "ruko";
+      else if (h > 28 && rng() > 0.35) style = "glass";
+      else style = "block";
+
+      const color = style === "glass"
+        ? GLASS_COLORS[(rng() * GLASS_COLORS.length) | 0]
+        : d.colors[(rng() * d.colors.length) | 0];
+      const kind: Building["kind"] = style === "glass" ? "office" : h > 22 ? "office" : rng() > 0.5 ? "office" : "home";
+
+      buildings.push({ x: cx, z: cz, w, d: dpt, h, color, kind, style });
     }
   }
 
@@ -97,15 +108,15 @@ export function generateCity(): { buildings: Building[]; trees: TreePos[] } {
     }
   }
 
-  // ── Monas park trees (lush rings, matches reference aerial) ──
+  // ── Monas park trees (rings OUTSIDE the 48m monument base) ──
   for (let k = 0; k < 28; k++) {
     const a = (k / 28) * Math.PI * 2;
-    const r = 28 + (tRng() - 0.5) * 4;
+    const r = 40 + (tRng() - 0.5) * 2;
     trees.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, scale: 1.1 + tRng() * 0.5, variant: (tRng() * 5) | 0 });
   }
-  for (let k = 0; k < 18; k++) {
-    const a = (k / 18) * Math.PI * 2 + 0.25;
-    const r = 15 + (tRng() - 0.5) * 2;
+  for (let k = 0; k < 22; k++) {
+    const a = (k / 22) * Math.PI * 2 + 0.25;
+    const r = 37 + (tRng() - 0.5) * 1.5;
     trees.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, scale: 0.95 + tRng() * 0.4, variant: (tRng() * 5) | 0 });
   }
 

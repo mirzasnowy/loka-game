@@ -7,6 +7,7 @@ import { Asset } from "@/core/assetRegistry";
 import { useGame } from "@/core/store";
 import { input } from "@/core/input";
 import { enemies, type EnemyEntry } from "./registries";
+import { avatar } from "@/player/avatarState";
 
 /**
  * Arkham-lite melee. Enemies (preman) aggro, close in and strike on a cooldown;
@@ -92,6 +93,7 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
       const invuln = performance.now() < input.iframeUntil;
       if (!invuln) {
         useGame.getState().damage(input.block ? ENEMY_HIT * 0.35 : ENEMY_HIT);
+        avatar.hurtAt = performance.now();
       }
     }
 
@@ -140,6 +142,9 @@ export default function CombatSystem() {
     const punch = input.consume("punch");
     const kick = input.consume("kick");
     if (punch || kick) {
+      // fire the strike animation immediately on input (even if it misses)
+      if (kick) avatar.kickAt = performance.now();
+      else avatar.punchAt = performance.now();
       const dmg = kick ? KICK_DMG : PUNCH_DMG;
       const [px, , pz] = st.runtime.pos;
       const yaw = st.runtime.facing;

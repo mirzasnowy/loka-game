@@ -4,10 +4,11 @@ import { useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { RigidBody, CapsuleCollider, type RapierRigidBody } from "@react-three/rapier";
 import { Vector3, Quaternion, Euler, MathUtils, Group } from "three";
-import { Asset } from "@/core/assetRegistry";
 import { useGame } from "@/core/store";
 import { input } from "@/core/input";
 import { drivables } from "@/systems/registries";
+import PlayerModel from "./PlayerModel";
+import { avatar } from "./avatarState";
 
 /**
  * Single control + camera authority. On foot it drives the capsule rigidbody;
@@ -32,7 +33,8 @@ const fwd = new Vector3();
 export default function Player() {
   const body = useRef<RapierRigidBody>(null!);
   const visual = useRef<Group>(null!);
-  const yaw = useRef(0); // camera orbit
+  const yaw = useRef(0); // camera orbit (horizontal)
+  const pitch = useRef(0.25); // camera tilt (vertical)
   const faceYaw = useRef(0); // where the character model points
   const wasDriving = useRef(false);
   const { camera } = useThree();
@@ -46,6 +48,7 @@ export default function Player() {
     if (!b) return;
 
     yaw.current -= input.takeLook();
+    pitch.current = Math.max(-0.35, Math.min(1.1, pitch.current - input.takeLookY()));
     const driving = st.runtime.inVehicleId;
 
     // --- enter/exit transitions ---
@@ -81,11 +84,13 @@ export default function Player() {
 
     const v = b.linvel();
     b.setLinvel({ x: moveDir.x * speed, y: v.y, z: moveDir.z * speed }, true);
+    const grounded = Math.abs(v.y) < 0.12;
 
     // Jump (grounded ~ vertical velocity near zero). ponytail: velocity check,
     // upgrade to a downward ray if coyote-time/double-jump bugs appear.
-    if (input.consume("jump") && Math.abs(v.y) < 0.08) {
+    if (input.consume("jump") && grounded) {
       b.setLinvel({ x: v.x, y: JUMP, z: v.z }, true);
+      avatar.jumpAt = performance.now();
     }
 
     // Dodge: burst in current move/facing dir + i-frames.
@@ -98,6 +103,12 @@ export default function Player() {
     // Stamina drain/regen.
     useGame.getState().setStamina(st.player.stamina + (running ? -14 : 8) * delta);
 
+    // Feed the animation rig.
+    avatar.speed = moving ? speed : 0;
+    avatar.running = running;
+    avatar.grounded = grounded;
+    avatar.blocking = input.block;
+
     // Face movement direction.
     if (moving) {
       faceYaw.current = MathUtils.lerp(faceYaw.current, Math.atan2(moveDir.x, moveDir.z), 0.25);
@@ -108,9 +119,16 @@ export default function Player() {
     useGame.getState().setPlayerPos([p.x, p.y, p.z]);
     useGame.getState().setPlayerFacing(faceYaw.current);
 
-    // Third-person follow camera.
-    camWanted.set(p.x + Math.sin(yaw.current) * 9, p.y + 6, p.z + Math.cos(yaw.current) * 9);
-    camera.position.lerp(camWanted, 0.12);
+    // Third-person orbit camera: yaw (around) + pitch (up/down).
+    const dist = 8.5;
+    const horiz = Math.cos(pitch.current) * dist;
+    const vert = 2.2 + Math.sin(pitch.current) * dist;
+    camWanted.set(
+      p.x + Math.sin(yaw.current) * horiz,
+      Math.max(p.y + 1.2, p.y + vert),
+      p.z + Math.cos(yaw.current) * horiz
+    );
+    camera.position.lerp(camWanted, 0.14);
     camera.lookAt(camTarget.set(p.x, p.y + 1.5, p.z));
   });
 
@@ -125,7 +143,7 @@ export default function Player() {
     >
       <CapsuleCollider args={[0.5, 0.35]} />
       <group ref={visual}>
-        <Asset id="player" />
+        <PlayerModel />
       </group>
     </RigidBody>
   );

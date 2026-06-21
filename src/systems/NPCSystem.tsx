@@ -35,6 +35,7 @@ interface Agent {
   rot: number;
   arche: number;
   turnedAt: number; // last intersection index handled (avoid re-trigger)
+  phase: number;    // gait phase for walk bob
 }
 
 const dummy = new Object3D();
@@ -71,6 +72,7 @@ export default function NPCSystem() {
         axis: "x", line: 0, side: 1, along: 0, dir: 1,
         speed: 1.2 + Math.random() * 1.1, state: "walk", timer: Math.random() * 3,
         crossT: 0, crossFrom: 1, rot: 0, arche: (Math.random() * ARCHETYPES.length) | 0, turnedAt: 9999,
+        phase: Math.random() * 6.28,
       };
       spawnNear(a, px, pz);
       return a;
@@ -161,14 +163,20 @@ export default function NPCSystem() {
 
       // heading from movement
       const dx = x - prevX, dz = z - prevZ;
-      if (dx * dx + dz * dz > 1e-6) a.rot = MathUtils.lerp(a.rot, Math.atan2(dx, dz), 0.25);
+      const stepping = dx * dx + dz * dz > 1e-6;
+      if (stepping) a.rot = MathUtils.lerp(a.rot, Math.atan2(dx, dz), 0.25);
+
+      // walk bob + slight forward tilt while moving
+      if (stepping) a.phase += delta * (5 + a.speed * 3.5);
+      const bob = stepping ? Math.abs(Math.sin(a.phase)) * 0.06 : 0;
+      const tilt = stepping ? 0.06 : 0;
 
       // render 3 stacked boxes
-      dummy.position.set(x, 1.58, z); dummy.rotation.set(0, a.rot, 0); dummy.scale.set(0.38, 0.38, 0.36); dummy.updateMatrix();
+      dummy.position.set(x, 1.58 + bob, z); dummy.rotation.set(tilt, a.rot, 0); dummy.scale.set(0.38, 0.38, 0.36); dummy.updateMatrix();
       headRef.current.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(x, 1.1, z); dummy.scale.set(0.44, 0.6, 0.28); dummy.updateMatrix();
+      dummy.position.set(x, 1.1 + bob, z); dummy.scale.set(0.44, 0.6, 0.28); dummy.updateMatrix();
       bodyRef.current.setMatrixAt(i, dummy.matrix);
-      dummy.position.set(x, 0.44, z); dummy.scale.set(0.38, 0.52, 0.22); dummy.updateMatrix();
+      dummy.position.set(x, 0.44 + bob * 0.5, z); dummy.scale.set(0.38, 0.52, 0.22); dummy.updateMatrix();
       legsRef.current.setMatrixAt(i, dummy.matrix);
     }
 
