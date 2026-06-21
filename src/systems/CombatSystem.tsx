@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Group, Mesh, Vector3 } from "three";
+import { Group, Mesh, Vector3, MeshBasicMaterial } from "three";
 import { Asset } from "@/core/assetRegistry";
 import { useGame } from "@/core/store";
 import { input } from "@/core/input";
@@ -135,8 +135,8 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
         const bk = (now - entry.hitAt) / 200;
         blood.current.scale.setScalar(1 + bk * 2);
         blood.current.position.y = 1 + bk;
-        (blood.current.children[0] as Mesh).material.opacity = 1 - bk;
-        (blood.current.children[1] as Mesh).material.opacity = 1 - bk;
+        ((blood.current.children[0] as Mesh).material as MeshBasicMaterial).opacity = 1 - bk;
+        ((blood.current.children[1] as Mesh).material as MeshBasicMaterial).opacity = 1 - bk;
       } else {
         blood.current.visible = false;
       }
@@ -180,6 +180,7 @@ export default function CombatSystem() {
   const addExp = useGame((s) => s.addExp);
   const notify = useGame((s) => s.notify);
   const combo = useRef({ count: 0, until: 0 });
+  const { camera } = useThree();
 
   useFrame(() => {
     const st = useGame.getState();
@@ -198,21 +199,30 @@ export default function CombatSystem() {
         avatar.comboCount = combo.current.count + 1; // predict next combo
       }
       const dmg = kick ? KICK_DMG : PUNCH_DMG;
-      const [px, , pz] = st.runtime.pos;
-      const yaw = st.runtime.facing;
-      fwd.set(Math.sin(yaw), 0, Math.cos(yaw));
+      
+      const rayOrigin = camera.position;
+      const rayDir = new Vector3();
+      camera.getWorldDirection(rayDir);
 
       let best: EnemyEntry | null = null;
-      let bestDist = PLAYER_REACH;
+      let bestDist = PLAYER_REACH + 1;
+      
       enemies.forEach((e) => {
         if (e.dead) return;
-        ev.set(e.pos[0] - px, 0, e.pos[2] - pz);
-        const d = ev.length();
-        if (d > bestDist) return;
-        ev.normalize();
-        if (ev.dot(fwd) < ATTACK_ARC) return; // outside frontal arc
-        best = e;
-        bestDist = d;
+        // Check intersection with an imaginary cylinder around the enemy (height 2.0, radius 0.6)
+        ev.set(e.pos[0], 1.0, e.pos[2]); // center of enemy mass
+        const v = new Vector3().subVectors(ev, rayOrigin);
+        const t = v.dot(rayDir);
+        
+        if (t > 0 && t < bestDist) {
+          const proj = new Vector3().copy(rayOrigin).add(rayDir.clone().multiplyScalar(t));
+          // roughly hit cylinder radius
+          const hitDist = proj.distanceTo(ev);
+          if (hitDist < 0.7) {
+            best = e;
+            bestDist = t;
+          }
+        }
       });
 
       const now = performance.now();
@@ -224,6 +234,7 @@ export default function CombatSystem() {
         const mult = 1 + Math.min(combo.current.count - 1, 4) * 0.15;
         target.hp -= dmg * mult;
         target.hitAt = now;
+        st.triggerHitMarker(); // Flash the crosshair
         if (target.hp <= 0) {
           target.dead = true;
           target.diedAt = now;

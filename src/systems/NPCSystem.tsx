@@ -186,13 +186,13 @@ export default function NPCSystem() {
   return (
     <>
       <instancedMesh ref={headRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
       </instancedMesh>
       <instancedMesh ref={bodyRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
       </instancedMesh>
       <instancedMesh ref={legsRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
       </instancedMesh>
     </>
   );

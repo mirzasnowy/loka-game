@@ -85,6 +85,7 @@ interface GameState {
 
   // notifications (transient toasts)
   toast: { id: number; text: string } | null;
+  hitMarkerTime: number | null;
 
   // --- actions ---
   setBooted: (b: boolean) => void;
@@ -123,6 +124,7 @@ interface GameState {
   addAmmo: (n: number) => void;
 
   notify: (text: string) => void;
+  triggerHitMarker: () => void;
   hydrate: (partial: Partial<SaveShape>) => void;
 }
 
@@ -191,6 +193,7 @@ export const useGame = create<GameState>((set, get) => ({
   inventoryOpen: false,
 
   toast: null,
+  hitMarkerTime: null,
 
   setBooted: (booted) => set({ booted }),
   setPaused: (paused) => set({ paused }),
@@ -350,6 +353,7 @@ export const useGame = create<GameState>((set, get) => ({
     }),
 
   notify: (text) => set({ toast: { id: toastSeq++, text } }),
+  triggerHitMarker: () => set({ hitMarkerTime: performance.now() }),
 
   hydrate: (p) =>
     set((s) => ({

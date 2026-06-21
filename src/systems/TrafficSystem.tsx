@@ -46,13 +46,20 @@ function spawnVeh(v: Veh, px: number, pz: number) {
   v.speed = KINDS[v.kind].speed * (0.85 + Math.random() * 0.3);
   v.cur = v.speed;
   v.dir = Math.random() < 0.5 ? 1 : -1;
-  v.axis = Math.random() < 0.5 ? "z" : "x";
-  // pick a road line near the player, then a position spread along it
-  const center = v.axis === "z" ? px : pz;
-  const cands = ROAD_LINES.filter((c) => Math.abs(c - center) < 110);
-  v.line = cands.length ? cands[(Math.random() * cands.length) | 0] : 0;
-  const alongCenter = v.axis === "z" ? pz : px;
-  v.along = alongCenter + (Math.random() - 0.5) * 220;
+  
+  // Try up to 10 times to find a spawn point outside the park
+  for (let tries = 0; tries < 10; tries++) {
+    v.axis = Math.random() < 0.5 ? "z" : "x";
+    const center = v.axis === "z" ? px : pz;
+    const cands = ROAD_LINES.filter((c) => Math.abs(c - center) < 110);
+    v.line = cands.length ? cands[(Math.random() * cands.length) | 0] : 0;
+    const alongCenter = v.axis === "z" ? pz : px;
+    v.along = alongCenter + (Math.random() - 0.5) * 220;
+    
+    const sx = v.axis === "z" ? v.along : v.line;
+    const sz = v.axis === "z" ? v.line : v.along;
+    if (Math.hypot(sx, sz) >= PARK_RADIUS + 4) break;
+  }
 }
 
 export default function TrafficSystem() {
@@ -169,13 +176,13 @@ export default function TrafficSystem() {
   return (
     <>
       <instancedMesh ref={bodyRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
       </instancedMesh>
       <instancedMesh ref={cabRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
       </instancedMesh>
       <instancedMesh ref={whlRef} args={[undefined, undefined, WHEEL_COUNT]} castShadow frustumCulled={false}>
-        <cylinderGeometry args={[1, 1, 0.2, 12]} /><meshLambertMaterial vertexColors />
+        <cylinderGeometry args={[1, 1, 0.2, 12]} /><meshLambertMaterial color="white" vertexColors />
       </instancedMesh>
     </>
   );

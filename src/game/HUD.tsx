@@ -22,8 +22,21 @@ export default function HUD() {
       <Prompt />
       <Toast />
       <WeaponHUD />
+      <Crosshair />
       <MobileControls />
       <InventoryPanel />
+    </div>
+  );
+}
+
+function Crosshair() {
+  const hitTime = useGame((s) => s.hitMarkerTime ?? 0);
+  const now = performance.now();
+  const isHit = now - hitTime < 200; // red for 200ms
+  
+  return (
+    <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", fontSize: 24, fontWeight: 300, color: isHit ? "#ff3333" : "rgba(255, 255, 255, 0.7)", textShadow: "0 0 2px #000", pointerEvents: "none", zIndex: 10 }}>
+      +
     </div>
   );
 }

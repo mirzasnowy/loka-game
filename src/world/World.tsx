@@ -72,22 +72,22 @@ function Buildings() {
   return (
     <>
       <instancedMesh ref={bodyRef} args={[undefined, undefined, n]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial emissive="#20242b" emissiveIntensity={0.55} />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" emissive="#20242b" emissiveIntensity={0.55} />
       </instancedMesh>
       <instancedMesh ref={roofRef} args={[undefined, undefined, n]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial emissive="#1c2026" emissiveIntensity={0.5} />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" emissive="#1c2026" emissiveIntensity={0.5} />
       </instancedMesh>
       <instancedMesh ref={winRef} args={[undefined, undefined, n]}>
-        <planeGeometry args={[1, 1]} /><meshLambertMaterial transparent opacity={0.62} />
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial color="white" transparent opacity={0.62} />
       </instancedMesh>
       <instancedMesh ref={win2Ref} args={[undefined, undefined, n]}>
-        <planeGeometry args={[1, 1]} /><meshLambertMaterial transparent opacity={0.62} />
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial color="white" transparent opacity={0.62} />
       </instancedMesh>
       <instancedMesh ref={doorRef} args={[undefined, undefined, n]}>
-        <planeGeometry args={[1, 1]} /><meshLambertMaterial transparent opacity={0.85} />
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial color="white" transparent opacity={0.85} />
       </instancedMesh>
       <instancedMesh ref={acRef} args={[undefined, undefined, n]} castShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
       </instancedMesh>
     </>
   );
@@ -268,19 +268,19 @@ function Trees() {
   return (
     <>
       <instancedMesh ref={trunkRef} args={[undefined, undefined, data.length]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.5, 0.7, 1, 7]} /><meshLambertMaterial />
+        <cylinderGeometry args={[0.5, 0.7, 1, 7]} /><meshLambertMaterial color="white" />
       </instancedMesh>
       <instancedMesh ref={botRef} args={[undefined, undefined, data.length]} castShadow>
-        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial />
+        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial color="white" />
       </instancedMesh>
       <instancedMesh ref={midRef} args={[undefined, undefined, data.length]} castShadow>
-        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial />
+        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial color="white" />
       </instancedMesh>
       <instancedMesh ref={topRef} args={[undefined, undefined, data.length]} castShadow>
-        <sphereGeometry args={[1, 7, 5]} /><meshLambertMaterial />
+        <sphereGeometry args={[1, 7, 5]} /><meshLambertMaterial color="white" />
       </instancedMesh>
       <instancedMesh ref={bushRef} args={[undefined, undefined, data.length]} castShadow>
-        <sphereGeometry args={[1, 6, 5]} /><meshLambertMaterial />
+        <sphereGeometry args={[1, 6, 5]} /><meshLambertMaterial color="white" />
       </instancedMesh>
     </>
   );
@@ -327,7 +327,7 @@ function StreetLamps() {
       </instancedMesh>
       <instancedMesh ref={headRef} args={[undefined, undefined, positions.length]}>
         <sphereGeometry args={[1, 7, 5]} />
-        <meshLambertMaterial color="#fff8e0" emissive="#ffe060" emissiveIntensity={1.0} />
+        <meshLambertMaterial color="white" emissive="#ffe060" emissiveIntensity={1.0} />
       </instancedMesh>
     </>
   );
@@ -430,11 +430,15 @@ function DistrictLabels() {
 
 export default function World() {
   const s = WORLD.size;
+  const bldgData = useMemo(() => generateCity().buildings, []);
   return (
     <group>
-      {/* Ground */}
+      {/* Ground and Building Physics */}
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[s, 1, s]} position={[0, -1, 0]} />
+        {bldgData.map((b, i) => (
+          <CuboidCollider key={i} args={[b.w / 2, b.h / 2, b.d / 2]} position={[b.x, b.h / 2, b.z]} />
+        ))}
         <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[s * 2, s * 2]} />
           <meshLambertMaterial color="#5aaa40" />
