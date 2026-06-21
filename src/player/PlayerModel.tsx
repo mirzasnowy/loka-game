@@ -25,6 +25,7 @@ const lerp = MathUtils.lerp;
 export default function PlayerModel() {
   const rootG = useRef<Group>(null!);
   const bodyG = useRef<Group>(null!);
+  const headG = useRef<Group>(null!);
   const armL  = useRef<Group>(null!);
   const armR  = useRef<Group>(null!);
   const foreL = useRef<Group>(null!);
@@ -50,7 +51,9 @@ export default function PlayerModel() {
     let LSx = -sw * 0.8, LSz = 0.12, LSy = 0, LE = -0.18;   // left shoulder + elbow
     let RSx = sw * 0.8,  RSz = -0.12, RSy = 0, RE = -0.18;  // right shoulder + elbow
     let LLx = sw, LLz = 0, RLx = -sw, RLz = 0;              // legs
-    let bodyY = 0;
+    let bodyY = 0;        // torso twist
+    let bodyPitch = 0;    // lean into / out of a punch
+    let headTurn = 0, headTuck = 0; // head follows the punch like a boxer
     let leanT = running ? 0.20 : moving ? 0.09 : 0;
     const idleBob = moving ? 0 : Math.sin(now * 0.0022) * 0.012;
 
@@ -62,11 +65,13 @@ export default function PlayerModel() {
       LSx = lerp(LSx, -1.5, k); RSx = lerp(RSx, -1.5, k); LE = lerp(LE, -1.2, k); RE = lerp(RE, -1.2, k);
     }
 
-    // combat stance (kuda-kuda + guard up) when recently attacked and standing still
+    // combat stance (kuda-kuda + guard up) + idle bob-and-weave when standing still
     const inCombat = now - Math.max(avatar.punchAt, avatar.kickAt) < 1500;
     if (inCombat && !moving) {
       LLx = -0.3; RLx = 0.28; LLz = 0.06; RLz = -0.06;
       LSx = -0.7; RSx = -0.7; LE = -1.1; RE = -1.1; LSz = 0.2; RSz = -0.2;
+      bodyY = Math.sin(now * 0.005) * 0.08;     // subtle weave
+      headTurn = Math.sin(now * 0.005) * 0.06;
     }
 
     // ── PUNCH: jab(1) cross(2) hook(3) uppercut(4) — all LAND FORWARD ──
@@ -75,26 +80,25 @@ export default function PlayerModel() {
       const k = Math.sin(pt * Math.PI); // 0→1→0 extend + retract
       const m = avatar.comboCount;
       if (m === 1) {
-        // Jab — right straight, elbow extends
+        // Jab — right straight, elbow extends; torso & head rotate into it
         RSx = lerp(RSx, -1.55, k); RSz = lerp(RSz, -0.04, k); RE = lerp(RE, -0.06, k);
         LSx = lerp(LSx, -0.7, k); LE = lerp(LE, -1.1, k);
-        bodyY = lerp(0, -0.28, k);
+        bodyY = lerp(0, -0.30, k); bodyPitch = lerp(0, 0.14, k); headTurn = lerp(0, -0.16, k);
       } else if (m === 2) {
-        // Cross — left straight with hip turn
+        // Cross — left straight with big hip + shoulder rotation
         LSx = lerp(LSx, -1.62, k); LSz = lerp(LSz, 0.05, k); LE = lerp(LE, -0.06, k);
         RSx = lerp(RSx, -0.7, k); RE = lerp(RE, -1.1, k);
-        bodyY = lerp(0, 0.4, k);
+        bodyY = lerp(0, 0.45, k); bodyPitch = lerp(0, 0.18, k); headTurn = lerp(0, 0.2, k);
       } else if (m === 3) {
-        // Hook — bent left arm swings across to the FRONT
+        // Hook — bent left arm swings across to the FRONT, body whips around
         LSx = lerp(LSx, -1.35, k); LSz = lerp(LSz, -0.5, k); LSy = lerp(0, 0.7, k); LE = lerp(LE, -1.5, k);
         RSx = lerp(RSx, -0.7, k); RE = lerp(RE, -1.1, k);
-        bodyY = lerp(0, 0.5, k);
+        bodyY = lerp(0, 0.55, k); bodyPitch = lerp(0, 0.10, k); headTurn = lerp(0, 0.28, k);
       } else {
-        // Uppercut — bent right forearm drives UP in front + little hop
+        // Uppercut — bent right forearm drives UP; body sinks then rises, chin up
         RSx = lerp(RSx, -0.25, k); RSz = lerp(RSz, 0.1, k); RE = lerp(RE, -2.35, k);
         LSx = lerp(LSx, -0.7, k); LE = lerp(LE, -1.1, k);
-        bodyY = lerp(0, -0.18, k);
-        bodyY += k * 0; // (hop handled on rootG below via idle slot)
+        bodyY = lerp(0, -0.2, k); bodyPitch = lerp(0, -0.14, k); headTuck = lerp(0, -0.18, k);
       }
     }
 
@@ -135,8 +139,12 @@ export default function PlayerModel() {
     legL.current.rotation.set(lerp(legL.current.rotation.x, LLx, sm), 0, lerp(legL.current.rotation.z, LLz, sm));
     legR.current.rotation.set(lerp(legR.current.rotation.x, RLx, sm), 0, lerp(legR.current.rotation.z, RLz, sm));
     bodyG.current.rotation.y = lerp(bodyG.current.rotation.y, bodyY, sm);
-    bodyG.current.rotation.x = lean.current;
+    bodyG.current.rotation.x = lerp(bodyG.current.rotation.x, lean.current + bodyPitch, sm);
     bodyG.current.position.y = idleBob;
+    if (headG.current) {
+      headG.current.rotation.x = lerp(headG.current.rotation.x, headTuck, sm);
+      headG.current.rotation.y = lerp(headG.current.rotation.y, headTurn, sm);
+    }
 
     // KNOCKDOWN ragdoll + SIT on the root
     const kd = now - avatar.knockdownAt;
@@ -164,11 +172,13 @@ export default function PlayerModel() {
     <group ref={rootG}>
       {/* Body */}
       <group ref={bodyG}>
-        <mesh position={[0, 1.60, 0]} castShadow><boxGeometry args={[0.38, 0.38, 0.36]} /><meshLambertMaterial color={SKIN} /></mesh>
-        <mesh position={[0, 1.82, 0]}><boxGeometry args={[0.41, 0.13, 0.39]} /><meshLambertMaterial color={HAIR} /></mesh>
-        {/* simple face */}
-        <mesh position={[-0.08, 1.62, 0.185]}><boxGeometry args={[0.05, 0.05, 0.02]} /><meshLambertMaterial color="#1a1a1a" /></mesh>
-        <mesh position={[0.08, 1.62, 0.185]}><boxGeometry args={[0.05, 0.05, 0.02]} /><meshLambertMaterial color="#1a1a1a" /></mesh>
+        {/* Head on its own pivot (neck) so it can turn/tuck like a boxer */}
+        <group ref={headG} position={[0, 1.42, 0]}>
+          <mesh position={[0, 0.18, 0]} castShadow><boxGeometry args={[0.38, 0.38, 0.36]} /><meshLambertMaterial color={SKIN} /></mesh>
+          <mesh position={[0, 0.40, 0]}><boxGeometry args={[0.41, 0.13, 0.39]} /><meshLambertMaterial color={HAIR} /></mesh>
+          <mesh position={[-0.08, 0.20, 0.185]}><boxGeometry args={[0.05, 0.05, 0.02]} /><meshLambertMaterial color="#1a1a1a" /></mesh>
+          <mesh position={[0.08, 0.20, 0.185]}><boxGeometry args={[0.05, 0.05, 0.02]} /><meshLambertMaterial color="#1a1a1a" /></mesh>
+        </group>
         <mesh position={[0, 1.12, 0]} castShadow><boxGeometry args={[0.48, 0.64, 0.30]} /><meshLambertMaterial color={JACKET} /></mesh>
         <mesh position={[0, 1.12, 0.156]}><boxGeometry args={[0.06, 0.62, 0.02]} /><meshLambertMaterial color={TRIM} /></mesh>
         <mesh position={[0.13, 1.30, 0.158]}><boxGeometry args={[0.16, 0.10, 0.02]} /><meshLambertMaterial color="#f0c020" /></mesh>
