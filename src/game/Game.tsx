@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { AdaptiveDpr, Preload } from "@react-three/drei";
 import { Physics } from "@react-three/rapier";
@@ -20,23 +20,29 @@ import CombatSystem from "@/systems/CombatSystem";
 import QuestSystem from "@/systems/QuestSystem";
 import InteractionSystem from "@/systems/InteractionSystem";
 import HUD from "./HUD";
+import StartScreen from "./StartScreen";
 
 registerPlaceholders();
 
 export default function Game() {
+  const [started, setStarted] = useState(false);
+
   useEffect(() => {
+    if (!started) return;
     registerPlaceholders();
-    loadGame(); // restore save if present
+    loadGame();
     startAutosave();
     useGame.getState().setBooted(true);
     return () => stopAutosave();
-  }, []);
+  }, [started]);
+
+  if (!started) return <StartScreen onStart={() => setStarted(true)} />;
 
   return (
     <>
       <Canvas
         shadows
-        dpr={[1, 1.5]} // capped for mobile; AdaptiveDpr drops further under load
+        dpr={[1, 1.5]}
         camera={{ position: [30, 12, 30], fov: 55, near: 0.5, far: 900 }}
         gl={{ powerPreference: "high-performance", antialias: false }}
       >
@@ -51,12 +57,9 @@ export default function Game() {
             <CombatSystem />
           </Physics>
 
-          {/* Non-physics agents (kinematic, mobile-friendly) */}
           <NPCSystem />
           <TrafficSystem />
           <Vendors />
-
-          {/* Logic-only systems */}
           <QuestSystem />
           <InteractionSystem />
 

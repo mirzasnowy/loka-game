@@ -6,17 +6,9 @@ import { InstancedMesh, Object3D, Color, Vector3, MathUtils } from "three";
 import { useGame } from "@/core/store";
 import { WORLD } from "@/world/worldConfig";
 
-/**
- * Crowd of pedestrians. Pooled + recycled around the player (spawn ring in,
- * despawn ring out) so the world feels alive without ever simulating the whole
- * city. Rendered as one instanced mesh = one draw call. Archetypes from the
- * concept art (office worker, student, ojol, elderly...) are colour-coded; swap
- * to per-archetype GLBs later by splitting into multiple instanced meshes.
- */
-
 const MAX = 60;
-const SPAWN_RING = 70; // spawn within this radius of player
-const DESPAWN = 120; // recycle beyond this
+const SPAWN_RING = 70;
+const DESPAWN = 120;
 
 type State = "walk" | "idle";
 interface Agent {
@@ -25,14 +17,25 @@ interface Agent {
   speed: number;
   state: State;
   timer: number;
-  color: Color;
   rot: number;
+  archetype: number;
 }
 
-const ARCHETYPES = ["#5a8f5a", "#dddddd", "#d04f4f", "#2b8a3e", "#8a8a8a", "#34507a"];
+// shirt / skin / pants per archetype
+const ARCHETYPES = [
+  { shirt: "#ffffff", skin: "#c8956b", pants: "#1a3080" }, // student
+  { shirt: "#e8e8e8", skin: "#e0b890", pants: "#1a1a2a" }, // office
+  { shirt: "#2b8a3e", skin: "#c8956b", pants: "#181818" }, // ojol
+  { shirt: "#6080b0", skin: "#e0b890", pants: "#1c2530" }, // police
+  { shirt: "#a0907a", skin: "#d8a870", pants: "#3a3028" }, // elderly
+  { shirt: "#e87038", skin: "#c8956b", pants: "#3a2010" }, // vendor
+];
 
 const dummy = new Object3D();
 const dir = new Vector3();
+const cSkin = new Color();
+const cShirt = new Color();
+const cPants = new Color();
 
 function randomDestNear(p: Vector3, out: Vector3) {
   const a = Math.random() * Math.PI * 2;
@@ -43,94 +46,132 @@ function randomDestNear(p: Vector3, out: Vector3) {
 }
 
 export default function NPCSystem() {
-  const ref = useRef<InstancedMesh>(null!);
+  const headRef  = useRef<InstancedMesh>(null!);
+  const bodyRef  = useRef<InstancedMesh>(null!);
+  const legsRef  = useRef<InstancedMesh>(null!);
 
   const agents = useMemo<Agent[]>(() => {
     const [px, , pz] = useGame.getState().runtime.pos;
     const player = new Vector3(px, 0, pz);
-    return Array.from({ length: MAX }, () => {
-      const a = Math.random() * Math.PI * 2;
+    return Array.from({ length: MAX }, (_, i) => {
+      const a = (i / MAX) * Math.PI * 2;
       const r = Math.random() * SPAWN_RING;
       const pos = new Vector3(player.x + Math.cos(a) * r, 0, player.z + Math.sin(a) * r);
-      const agent: Agent = {
+      return {
         pos,
         dest: randomDestNear(pos, new Vector3()),
         speed: 1.2 + Math.random() * 1.2,
-        state: "walk",
+        state: "walk" as State,
         timer: Math.random() * 4,
-        color: new Color(ARCHETYPES[(Math.random() * ARCHETYPES.length) | 0]),
         rot: 0,
+        archetype: (Math.random() * ARCHETYPES.length) | 0,
       };
-      return agent;
     });
   }, []);
 
   useFrame((_, delta) => {
     const st = useGame.getState();
     if (st.paused) return;
-    const mesh = ref.current;
     const [px, , pz] = st.runtime.pos;
 
-    // Crowd density by time of day — quieter at night.
-    const density =
-      st.timeOfDay === "night" ? 0.4 : st.timeOfDay === "afternoon" ? 1 : 0.8;
+    const density = st.timeOfDay === "night" ? 0.4 : st.timeOfDay === "afternoon" ? 1 : 0.8;
     const activeCount = Math.floor(MAX * density);
 
+    const HIDE = -2000;
+
     for (let i = 0; i < MAX; i++) {
-      const a = agents[i];
+      const ag = agents[i];
 
       if (i >= activeCount) {
-        dummy.position.set(0, -1000, 0);
+        dummy.position.set(0, HIDE, 0);
         dummy.scale.setScalar(0.0001);
         dummy.updateMatrix();
-        mesh.setMatrixAt(i, dummy.matrix);
+        headRef.current.setMatrixAt(i, dummy.matrix);
+        bodyRef.current.setMatrixAt(i, dummy.matrix);
+        legsRef.current.setMatrixAt(i, dummy.matrix);
         continue;
       }
 
-      const distToPlayer = Math.hypot(a.pos.x - px, a.pos.z - pz);
-      if (distToPlayer > DESPAWN) {
-        // recycle near player on the far-from-camera side
+      // Recycle far agents
+      if (Math.hypot(ag.pos.x - px, ag.pos.z - pz) > DESPAWN) {
         const ang = Math.random() * Math.PI * 2;
-        a.pos.set(px + Math.cos(ang) * SPAWN_RING, 0, pz + Math.sin(ang) * SPAWN_RING);
-        a.pos.z = Math.max(WORLD.seaLine + 5, a.pos.z);
-        randomDestNear(a.pos, a.dest);
-        a.state = "walk";
+        ag.pos.set(px + Math.cos(ang) * SPAWN_RING, 0, pz + Math.sin(ang) * SPAWN_RING);
+        ag.pos.z = Math.max(WORLD.seaLine + 5, ag.pos.z);
+        randomDestNear(ag.pos, ag.dest);
+        ag.state = "walk";
       }
 
-      a.timer -= delta;
-      if (a.state === "walk") {
-        dir.subVectors(a.dest, a.pos);
+      // State machine
+      ag.timer -= delta;
+      if (ag.state === "walk") {
+        dir.subVectors(ag.dest, ag.pos);
         const d = dir.length();
-        if (d < 1 || a.timer <= 0) {
-          a.state = Math.random() < 0.4 ? "idle" : "walk";
-          a.timer = 2 + Math.random() * 4;
-          if (a.state === "walk") randomDestNear(a.pos, a.dest);
+        if (d < 1 || ag.timer <= 0) {
+          ag.state = Math.random() < 0.4 ? "idle" : "walk";
+          ag.timer = 2 + Math.random() * 4;
+          if (ag.state === "walk") randomDestNear(ag.pos, ag.dest);
         } else {
-          dir.multiplyScalar((a.speed * delta) / d);
-          a.pos.add(dir);
-          a.rot = MathUtils.lerp(a.rot, Math.atan2(dir.x, dir.z), 0.2);
+          dir.multiplyScalar((ag.speed * delta) / d);
+          ag.pos.add(dir);
+          ag.rot = MathUtils.lerp(ag.rot, Math.atan2(dir.x, dir.z), 0.2);
         }
-      } else if (a.timer <= 0) {
-        a.state = "walk";
-        a.timer = 3 + Math.random() * 5;
-        randomDestNear(a.pos, a.dest);
+      } else if (ag.timer <= 0) {
+        ag.state = "walk";
+        ag.timer = 3 + Math.random() * 5;
+        randomDestNear(ag.pos, ag.dest);
       }
 
-      dummy.position.set(a.pos.x, 0.75, a.pos.z);
-      dummy.rotation.set(0, a.rot, 0);
-      dummy.scale.setScalar(1);
+      const { shirt, skin, pants } = ARCHETYPES[ag.archetype];
+      const x = ag.pos.x, z = ag.pos.z, ry = ag.rot;
+
+      // Head
+      dummy.position.set(x, 1.58, z);
+      dummy.rotation.set(0, ry, 0);
+      dummy.scale.set(0.38, 0.38, 0.36);
       dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      mesh.setColorAt(i, a.color);
+      headRef.current.setMatrixAt(i, dummy.matrix);
+      headRef.current.setColorAt(i, cSkin.set(skin));
+
+      // Body (torso)
+      dummy.position.set(x, 1.10, z);
+      dummy.scale.set(0.44, 0.60, 0.28);
+      dummy.updateMatrix();
+      bodyRef.current.setMatrixAt(i, dummy.matrix);
+      bodyRef.current.setColorAt(i, cShirt.set(shirt));
+
+      // Legs
+      dummy.position.set(x, 0.44, z);
+      dummy.scale.set(0.38, 0.52, 0.22);
+      dummy.updateMatrix();
+      legsRef.current.setMatrixAt(i, dummy.matrix);
+      legsRef.current.setColorAt(i, cPants.set(pants));
     }
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+
+    headRef.current.instanceMatrix.needsUpdate = true;
+    bodyRef.current.instanceMatrix.needsUpdate = true;
+    legsRef.current.instanceMatrix.needsUpdate = true;
+    if (headRef.current.instanceColor)  headRef.current.instanceColor.needsUpdate = true;
+    if (bodyRef.current.instanceColor)  bodyRef.current.instanceColor.needsUpdate = true;
+    if (legsRef.current.instanceColor)  legsRef.current.instanceColor.needsUpdate = true;
   });
 
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-      <capsuleGeometry args={[0.28, 0.9, 4, 8]} />
-      <meshStandardMaterial vertexColors />
-    </instancedMesh>
+    <>
+      {/* Heads */}
+      <instancedMesh ref={headRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshLambertMaterial vertexColors />
+      </instancedMesh>
+      {/* Torsos */}
+      <instancedMesh ref={bodyRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshLambertMaterial vertexColors />
+      </instancedMesh>
+      {/* Legs */}
+      <instancedMesh ref={legsRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshLambertMaterial vertexColors />
+      </instancedMesh>
+    </>
   );
 }
