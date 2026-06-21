@@ -7,6 +7,7 @@ import { Physics } from "@react-three/rapier";
 
 import World from "@/world/World";
 import Player from "@/player/Player";
+import FPViewModel from "@/player/FPViewModel";
 import { registerPlaceholders } from "@/world/placeholders";
 import { useGame } from "@/core/store";
 import { loadGame, startAutosave, stopAutosave } from "@/core/save";
@@ -45,7 +46,7 @@ export default function Game() {
         shadows
         flat /* NoToneMapping — render colors at face value so nothing crushes to black */
         dpr={[1, 1.5]}
-        camera={{ position: [30, 12, 30], fov: 55, near: 0.5, far: 900 }}
+        camera={{ position: [30, 12, 30], fov: 55, near: 0.15, far: 900 }}
         gl={{ powerPreference: "high-performance", antialias: false }}
       >
         {/* Bright sky background — guaranteed even before TimeWeather runs */}
@@ -65,6 +66,7 @@ export default function Game() {
           <TrafficSystem />
           <Vendors />
           <GunSystem />
+          <FPViewModel />
           <QuestSystem />
           <InteractionSystem />
 

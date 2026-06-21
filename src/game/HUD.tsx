@@ -94,9 +94,9 @@ function TopCenter({ clockOn }: { clockOn: boolean }) {
   const mm = Math.floor((clock % 1) * 60).toString().padStart(2, "0");
 
   return (
-    <div style={{ position: "absolute", top: c(ST, 10), left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 5, pointerEvents: "none", maxWidth: "56%", zIndex: 20 }}>
+    <div style={{ position: "absolute", top: c(ST, 10), left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "row", alignItems: "center", gap: 8, pointerEvents: "none", zIndex: 20 }}>
       {def && (
-        <div style={{ background: CARD, backdropFilter: "blur(8px)", border: BORDER, borderRadius: 12, padding: "6px 14px", textAlign: "center", minWidth: 180 }}>
+        <div style={{ background: CARD, backdropFilter: "blur(8px)", border: BORDER, borderRadius: 12, padding: "6px 14px", textAlign: "center", minWidth: 170 }}>
           <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", color: "#ffd24a" }}>{def.type.toUpperCase()}</div>
           <div style={{ fontSize: 13.5, fontWeight: 700 }}>{def.title}</div>
           {aq?.done ? <div style={{ fontSize: 11.5, color: "#7fe08a" }}>✓ Selesai</div>
@@ -104,8 +104,9 @@ function TopCenter({ clockOn }: { clockOn: boolean }) {
         </div>
       )}
       {clockOn && (
-        <div style={{ background: CARD, border: BORDER, borderRadius: 999, padding: "3px 14px", fontSize: 12.5, fontWeight: 600 }}>
-          🕐 {hh}:{mm} · {TIME_LABEL[tod]} · {WEATHER_LABEL[weather]}
+        <div style={{ background: CARD, backdropFilter: "blur(8px)", border: BORDER, borderRadius: 12, padding: "6px 12px", fontSize: 12, fontWeight: 700, textAlign: "center", lineHeight: 1.4 }}>
+          <div>🕐 {hh}:{mm}</div>
+          <div style={{ opacity: 0.85, fontWeight: 600 }}>{TIME_LABEL[tod]} · {WEATHER_LABEL[weather]}</div>
         </div>
       )}
     </div>
@@ -335,18 +336,32 @@ function InventoryPanel() {
 
 function MobileControls() {
   const equipped = useGame((s) => s.equipped);
+  // Each button is absolutely positioned so toggling the pistol (which shows/hides
+  // "Isi") never reflows the others — fixes the overlap-on-toggle bug.
   return (
     <>
       <LookPad />
       <Joystick />
-      <div style={{ position: "absolute", right: c(SR, 18), bottom: c(SB, 20), display: "flex", alignItems: "flex-end", gap: 12, pointerEvents: "auto", zIndex: 50 }}>
-        <ActBtn action="interact" label="Aksi" color="rgba(46,125,50,0.9)" small />
-        <ActBtn action="jump" label="Lompat" color="rgba(21,101,192,0.9)" small />
-        {equipped === "pistol" && <ActBtn action="reload" label="Isi" color="rgba(93,64,55,0.9)" small />}
+      {/* primary attack (corner) */}
+      <div style={{ position: "absolute", right: c(SR, 20), bottom: c(SB, 22), pointerEvents: "auto", zIndex: 50 }}>
         {equipped === "pistol"
           ? <ActBtn action="fire" label="Tembak" color="rgba(229,57,53,0.92)" big />
           : <ActBtn action="punch" label="Pukul" color="rgba(211,47,47,0.92)" big />}
       </div>
+      {/* jump (left of primary) */}
+      <div style={{ position: "absolute", right: c(SR, 112), bottom: c(SB, 26), pointerEvents: "auto", zIndex: 50 }}>
+        <ActBtn action="jump" label="Lompat" color="rgba(21,101,192,0.9)" small />
+      </div>
+      {/* action (above jump) */}
+      <div style={{ position: "absolute", right: c(SR, 112), bottom: c(SB, 92), pointerEvents: "auto", zIndex: 50 }}>
+        <ActBtn action="interact" label="Aksi" color="rgba(46,125,50,0.9)" small />
+      </div>
+      {/* reload (above primary, pistol only) */}
+      {equipped === "pistol" && (
+        <div style={{ position: "absolute", right: c(SR, 32), bottom: c(SB, 108), pointerEvents: "auto", zIndex: 50 }}>
+          <ActBtn action="reload" label="Isi" color="rgba(93,64,55,0.9)" small />
+        </div>
+      )}
     </>
   );
 }
