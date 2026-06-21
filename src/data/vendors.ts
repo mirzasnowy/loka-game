@@ -30,10 +30,12 @@ export interface VendorPlacement {
   vendorId: string;
   pos: [number, number, number];
 }
+// All positions snapped onto sidewalks (grid.isSidewalk === true) so carts
+// never sit in the road. See src/world/grid.ts for the layout.
 export const VENDOR_PLACEMENTS: VendorPlacement[] = [
-  { vendorId: "bakso", pos: [30, 0, 30] },
-  { vendorId: "es-teh", pos: [-20, 0, 50] },
-  { vendorId: "siomay", pos: [60, 0, 80] },
-  { vendorId: "nasi-goreng", pos: [110, 0, 55] },
-  { vendorId: "cilok", pos: [-110, 0, 25] },
+  { vendorId: "bakso", pos: [12, 0, 41] },       // park entrance, south sidewalk of z=48
+  { vendorId: "es-teh", pos: [55, 0, 20] },      // east sidewalk of x=48
+  { vendorId: "siomay", pos: [41, 0, 72] },      // west sidewalk of x=48
+  { vendorId: "nasi-goreng", pos: [89, 0, 56] }, // west sidewalk of x=96
+  { vendorId: "cilok", pos: [-41, 0, 24] },      // east sidewalk of x=-48
 ];

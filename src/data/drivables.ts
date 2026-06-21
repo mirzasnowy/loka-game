@@ -5,10 +5,11 @@ export interface DrivablePlacement {
   pos: [number, number, number];
 }
 
+// Parked at curbs near the player spawn (sidewalk-adjacent road edges).
 export const DRIVABLE_PLACEMENTS: DrivablePlacement[] = [
-  { uid: "v_beat", specId: "beat", pos: [26, 1, 26] },
-  { uid: "v_nmax", specId: "nmax", pos: [-12, 1, 44] },
-  { uid: "v_avanza", specId: "avanza", pos: [44, 1, 64] },
-  { uid: "v_innova", specId: "innova", pos: [100, 1, 50] },
-  { uid: "v_bus", specId: "transjakarta", pos: [70, 1, 96] },
+  { uid: "v_beat", specId: "beat", pos: [24, 1, 43] },
+  { uid: "v_nmax", specId: "nmax", pos: [28, 1, 43] },
+  { uid: "v_avanza", specId: "avanza", pos: [44, 1, 30] },
+  { uid: "v_innova", specId: "innova", pos: [44, 1, 38] },
+  { uid: "v_bus", specId: "transjakarta", pos: [-44, 1, 30] },
 ];

@@ -30,12 +30,13 @@ interface PremanSpawn {
 }
 
 // Gang placements (data-driven world content; tied to the "preman" side quest).
+// On sidewalks (grid-aligned) so they loiter on the street, not in traffic.
 const GANG: PremanSpawn[] = [
-  { uid: "preman_1", pos: [-90, 0, -170] },
-  { uid: "preman_2", pos: [-84, 0, -176] },
-  { uid: "preman_3", pos: [-96, 0, -178] },
-  { uid: "preman_4", pos: [62, 0, 88] },
-  { uid: "preman_5", pos: [56, 0, 92] },
+  { uid: "preman_1", pos: [-41, 0, -120] },
+  { uid: "preman_2", pos: [-41, 0, -126] },
+  { uid: "preman_3", pos: [-35, 0, -123] },
+  { uid: "preman_4", pos: [55, 0, 60] },
+  { uid: "preman_5", pos: [55, 0, 66] },
 ];
 
 const pv = new Vector3();

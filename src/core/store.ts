@@ -137,7 +137,7 @@ export const useGame = create<GameState>((set, get) => ({
     exp: 0,
     level: 1,
   },
-  runtime: { pos: [20, 2, 20], facing: 0, inVehicleId: null },
+  runtime: { pos: [16, 2, 41], facing: 0, inVehicleId: null },
 
   clock: 7,
   timeScale: 60, // 1 real second = 1 game minute → 24h in 24 real min

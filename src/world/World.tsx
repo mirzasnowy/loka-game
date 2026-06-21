@@ -7,44 +7,42 @@ import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { Asset } from "@/core/assetRegistry";
 import { WORLD, DISTRICTS } from "./worldConfig";
 import { generateCity } from "./proc";
+import {
+  ROAD_LINES, ROAD_HALF, SIDEWALK_OFF, SIDEWALK_W, PARK_RADIUS, MAP, inPark,
+} from "./grid";
 
 const tmp = new Object3D();
 const tmpColor = new Color();
 
-// ─── Buildings ────────────────────────────────────────────────────────────────
+// ─── Buildings (body + roof + window glass) ──────────────────────────────────
 function Buildings() {
-  const bodyRef   = useRef<InstancedMesh>(null!);
-  const roofRef   = useRef<InstancedMesh>(null!);
-  const winRef    = useRef<InstancedMesh>(null!);
+  const bodyRef = useRef<InstancedMesh>(null!);
+  const roofRef = useRef<InstancedMesh>(null!);
+  const winRef  = useRef<InstancedMesh>(null!);
   const data = useMemo(() => generateCity().buildings, []);
 
   useLayoutEffect(() => {
     data.forEach((b, i) => {
-      // Main body
       tmp.position.set(b.x, b.h / 2, b.z);
-      tmp.scale.set(b.w, b.h, b.d);
       tmp.rotation.set(0, 0, 0);
+      tmp.scale.set(b.w, b.h, b.d);
       tmp.updateMatrix();
       bodyRef.current.setMatrixAt(i, tmp.matrix);
       bodyRef.current.setColorAt(i, tmpColor.set(b.color));
 
-      // Roof cap (darker slab on top)
       tmp.position.set(b.x, b.h + 0.45, b.z);
-      tmp.scale.set(b.w * 0.9, 0.9, b.d * 0.9);
+      tmp.scale.set(b.w * 0.92, 0.9, b.d * 0.92);
       tmp.updateMatrix();
       roofRef.current.setMatrixAt(i, tmp.matrix);
-      roofRef.current.setColorAt(i, tmpColor.set(b.color).multiplyScalar(0.62));
+      roofRef.current.setColorAt(i, tmpColor.set(b.color).multiplyScalar(0.6));
 
-      // Window overlay — glass strip on south face
-      // PlaneGeometry faces +Z; shift slightly outside south face
-      tmp.position.set(b.x, b.h * 0.52, b.z + b.d * 0.502);
-      tmp.scale.set(b.w * 0.80, b.h * 0.62, 1);
+      // window glass strip on the +Z (south) face
+      tmp.position.set(b.x, b.h * 0.54, b.z + b.d * 0.503);
       tmp.rotation.set(0, 0, 0);
+      tmp.scale.set(b.w * 0.82, b.h * 0.66, 1);
       tmp.updateMatrix();
       winRef.current.setMatrixAt(i, tmp.matrix);
-      // offices: steel-blue glass; residential: warm cream-yellow
-      const isOffice = b.color.startsWith("#7") || b.color.startsWith("#8") || b.color.startsWith("#a");
-      winRef.current.setColorAt(i, tmpColor.set(isOffice ? "#9ac8e8" : "#f8f0c0"));
+      winRef.current.setColorAt(i, tmpColor.set(b.kind === "office" ? "#a4d2ee" : "#f6edbc"));
     });
     [bodyRef, roofRef, winRef].forEach((r) => {
       r.current.instanceMatrix.needsUpdate = true;
@@ -62,135 +60,179 @@ function Buildings() {
         <boxGeometry args={[1, 1, 1]} />
         <meshLambertMaterial vertexColors />
       </instancedMesh>
-      {/* Window glass overlay — transparent blue/yellow on building face */}
       <instancedMesh ref={winRef} args={[undefined, undefined, data.length]}>
         <planeGeometry args={[1, 1]} />
-        <meshLambertMaterial vertexColors transparent opacity={0.55} />
+        <meshLambertMaterial vertexColors transparent opacity={0.6} />
       </instancedMesh>
     </>
   );
 }
 
-// ─── Roads ────────────────────────────────────────────────────────────────────
-function Roads() {
-  const ref    = useRef<InstancedMesh>(null!);
-  const lineRef= useRef<InstancedMesh>(null!);
-  const data = useMemo(() => generateCity().roads, []);
-
-  useLayoutEffect(() => {
-    data.forEach((r, i) => {
-      // Road surface
-      tmp.position.set(r.x, 0.02, r.z);
-      tmp.scale.set(WORLD.cell, 1, WORLD.cell);
-      tmp.rotation.set(-Math.PI / 2, 0, 0);
-      tmp.updateMatrix();
-      ref.current.setMatrixAt(i, tmp.matrix);
-
-      // Center dashed white line (narrow strip)
-      tmp.position.set(r.x, 0.04, r.z);
-      tmp.scale.set(0.22, 1, WORLD.cell * 0.4);
-      tmp.rotation.set(-Math.PI / 2, 0, 0);
-      tmp.updateMatrix();
-      lineRef.current.setMatrixAt(i, tmp.matrix);
-    });
-    ref.current.instanceMatrix.needsUpdate = true;
-    lineRef.current.instanceMatrix.needsUpdate = true;
-  }, [data]);
-
+// ─── Roads, sidewalks (strips along grid centerlines) ────────────────────────
+function Streets() {
+  const len = MAP * 2;
   return (
-    <>
-      <instancedMesh ref={ref} args={[undefined, undefined, data.length]} receiveShadow>
-        <planeGeometry args={[1, 1]} />
-        <meshLambertMaterial color="#383838" />
-      </instancedMesh>
-      <instancedMesh ref={lineRef} args={[undefined, undefined, data.length]}>
-        <planeGeometry args={[1, 1]} />
-        <meshLambertMaterial color="#f0f0c0" />
-      </instancedMesh>
-    </>
+    <group>
+      {ROAD_LINES.map((c) => (
+        <group key={`r${c}`}>
+          {/* E-W road (z = c) */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, c]} receiveShadow>
+            <planeGeometry args={[len, ROAD_HALF * 2]} />
+            <meshLambertMaterial color="#353535" />
+          </mesh>
+          {/* N-S road (x = c) */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[c, 0.021, 0]} receiveShadow>
+            <planeGeometry args={[ROAD_HALF * 2, len]} />
+            <meshLambertMaterial color="#353535" />
+          </mesh>
+          {/* sidewalks beside E-W road */}
+          {[1, -1].map((s) => (
+            <mesh key={`sew${s}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, c + s * SIDEWALK_OFF]} receiveShadow>
+              <planeGeometry args={[len, SIDEWALK_W]} />
+              <meshLambertMaterial color="#bdbdbd" />
+            </mesh>
+          ))}
+          {/* sidewalks beside N-S road */}
+          {[1, -1].map((s) => (
+            <mesh key={`sns${s}`} rotation={[-Math.PI / 2, 0, 0]} position={[c + s * SIDEWALK_OFF, 0.016, 0]} receiveShadow>
+              <planeGeometry args={[SIDEWALK_W, len]} />
+              <meshLambertMaterial color="#bdbdbd" />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
   );
 }
 
-// ─── Sidewalks ────────────────────────────────────────────────────────────────
-function Sidewalks() {
+// ─── Lane center dashes (yellow) ─────────────────────────────────────────────
+function LaneDashes() {
   const ref = useRef<InstancedMesh>(null!);
-  const data = useMemo(() => generateCity().roads, []);
+  const data = useMemo(() => {
+    const out: { x: number; z: number; axis: "x" | "z" }[] = [];
+    const STEP = 7;
+    for (const c of ROAD_LINES) {
+      for (let v = -MAP + 4; v <= MAP - 4; v += STEP) {
+        // E-W road dash (along x at z=c)
+        if (!inPark(v, c)) out.push({ x: v, z: c, axis: "x" });
+        // N-S road dash (along z at x=c)
+        if (!inPark(c, v)) out.push({ x: c, z: v, axis: "z" });
+      }
+    }
+    return out;
+  }, []);
+
   useLayoutEffect(() => {
-    data.forEach((r, i) => {
-      tmp.position.set(r.x, 0.03, r.z);
-      tmp.scale.set(WORLD.cell, 1, WORLD.cell * 0.17);
+    data.forEach((d, i) => {
+      tmp.position.set(d.x, 0.05, d.z);
       tmp.rotation.set(-Math.PI / 2, 0, 0);
+      if (d.axis === "x") tmp.scale.set(3, 0.35, 1);
+      else tmp.scale.set(0.35, 3, 1);
       tmp.updateMatrix();
       ref.current.setMatrixAt(i, tmp.matrix);
     });
     ref.current.instanceMatrix.needsUpdate = true;
   }, [data]);
+
   return (
-    <instancedMesh ref={ref} args={[undefined, undefined, data.length]} receiveShadow>
+    <instancedMesh ref={ref} args={[undefined, undefined, data.length]}>
       <planeGeometry args={[1, 1]} />
-      <meshLambertMaterial color="#c4c0b8" />
+      <meshLambertMaterial color="#e8d24a" />
     </instancedMesh>
   );
 }
 
-// ─── Trees (Synty-style: trunk + 3 SPHERE canopy layers) ─────────────────────
-const CANOPY_BOT   = ["#1e6b30", "#226238", "#1a5c2a", "#24703a", "#1c6432"];
-const CANOPY_MID   = ["#2d8a42", "#319050", "#298040", "#35964e", "#2b8848"];
-const CANOPY_TOP   = ["#44b060", "#4ab866", "#40a858", "#50be6a", "#48b462"];
-const BUSH_COLOR   = "#1d7034";
-const TRUNK_COLOR  = "#6b4018";
+// ─── Zebra crosswalks at intersections ───────────────────────────────────────
+function Crosswalks() {
+  const ref = useRef<InstancedMesh>(null!);
+  const data = useMemo(() => {
+    const stripes: { x: number; z: number; axis: "x" | "z" }[] = [];
+    const central = ROAD_LINES.filter((c) => Math.abs(c) <= 150);
+    for (const ix of central) {
+      for (const iz of central) {
+        if (inPark(ix, iz)) continue;
+        // North & South crosswalks across the N-S road (cars travel along Z → stripes run along Z)
+        for (const sgn of [1, -1]) {
+          const zc = iz + sgn * (ROAD_HALF + 1.6);
+          for (let sx = -ROAD_HALF + 0.7; sx <= ROAD_HALF - 0.7; sx += 1.25) {
+            stripes.push({ x: ix + sx, z: zc, axis: "z" });
+          }
+        }
+        // East & West crosswalks across the E-W road (cars travel along X → stripes run along X)
+        for (const sgn of [1, -1]) {
+          const xc = ix + sgn * (ROAD_HALF + 1.6);
+          for (let sz = -ROAD_HALF + 0.7; sz <= ROAD_HALF - 0.7; sz += 1.25) {
+            stripes.push({ x: xc, z: iz + sz, axis: "x" });
+          }
+        }
+      }
+    }
+    return stripes;
+  }, []);
+
+  useLayoutEffect(() => {
+    data.forEach((d, i) => {
+      tmp.position.set(d.x, 0.045, d.z);
+      tmp.rotation.set(-Math.PI / 2, 0, 0);
+      // stripe runs along its axis (length 2.4), thin across (0.5)
+      if (d.axis === "z") tmp.scale.set(0.5, 2.4, 1);
+      else tmp.scale.set(2.4, 0.5, 1);
+      tmp.updateMatrix();
+      ref.current.setMatrixAt(i, tmp.matrix);
+    });
+    ref.current.instanceMatrix.needsUpdate = true;
+  }, [data]);
+
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, Math.max(1, data.length)]}>
+      <planeGeometry args={[1, 1]} />
+      <meshLambertMaterial color="#f2f2f2" />
+    </instancedMesh>
+  );
+}
+
+// ─── Trees (Synty sphere canopy) ─────────────────────────────────────────────
+const CANOPY_BOT = ["#1e6b30", "#226238", "#1a5c2a", "#24703a", "#1c6432"];
+const CANOPY_MID = ["#2d8a42", "#319050", "#298040", "#35964e", "#2b8848"];
+const CANOPY_TOP = ["#44b060", "#4ab866", "#40a858", "#50be6a", "#48b462"];
 
 function Trees() {
-  const trunkRef   = useRef<InstancedMesh>(null!);
-  const botRef     = useRef<InstancedMesh>(null!);
-  const midRef     = useRef<InstancedMesh>(null!);
-  const topRef     = useRef<InstancedMesh>(null!);
-  const bushRef    = useRef<InstancedMesh>(null!);
+  const trunkRef = useRef<InstancedMesh>(null!);
+  const botRef   = useRef<InstancedMesh>(null!);
+  const midRef   = useRef<InstancedMesh>(null!);
+  const topRef   = useRef<InstancedMesh>(null!);
+  const bushRef  = useRef<InstancedMesh>(null!);
   const data = useMemo(() => generateCity().trees, []);
 
   useLayoutEffect(() => {
-    // Each tree has 1 trunk + 3 sphere canopy layers + 1 bush cluster
     data.forEach((t, i) => {
-      const s  = t.scale;
-      const th = 2.8 * s;      // trunk height
-      const tr = 0.20 * s;     // trunk radius
-      const v  = t.variant % 5;
+      const s = t.scale;
+      const th = 2.8 * s, tr = 0.20 * s, v = t.variant % 5;
 
-      // Trunk — tapered brown cylinder
-      tmp.position.set(t.x, th / 2, t.z);
-      tmp.rotation.set(0, 0, 0);
-      tmp.scale.set(tr * 2, th, tr * 2);
-      tmp.updateMatrix();
+      tmp.position.set(t.x, th / 2, t.z); tmp.rotation.set(0, 0, 0);
+      tmp.scale.set(tr * 2, th, tr * 2); tmp.updateMatrix();
       trunkRef.current.setMatrixAt(i, tmp.matrix);
-      trunkRef.current.setColorAt(i, tmpColor.set(TRUNK_COLOR));
+      trunkRef.current.setColorAt(i, tmpColor.set("#6b4018"));
 
-      // Bottom canopy — widest, darkest green sphere
       tmp.position.set(t.x, th + 1.1 * s, t.z);
-      tmp.scale.set(2.6 * s, 1.8 * s, 2.6 * s);
-      tmp.updateMatrix();
+      tmp.scale.set(2.6 * s, 1.8 * s, 2.6 * s); tmp.updateMatrix();
       botRef.current.setMatrixAt(i, tmp.matrix);
       botRef.current.setColorAt(i, tmpColor.set(CANOPY_BOT[v]));
 
-      // Middle canopy
       tmp.position.set(t.x, th + 2.4 * s, t.z);
-      tmp.scale.set(2.1 * s, 1.7 * s, 2.1 * s);
-      tmp.updateMatrix();
+      tmp.scale.set(2.1 * s, 1.7 * s, 2.1 * s); tmp.updateMatrix();
       midRef.current.setMatrixAt(i, tmp.matrix);
       midRef.current.setColorAt(i, tmpColor.set(CANOPY_MID[v]));
 
-      // Top canopy — smallest, brightest
       tmp.position.set(t.x, th + 3.5 * s, t.z);
-      tmp.scale.set(1.4 * s, 1.4 * s, 1.4 * s);
-      tmp.updateMatrix();
+      tmp.scale.set(1.4 * s, 1.4 * s, 1.4 * s); tmp.updateMatrix();
       topRef.current.setMatrixAt(i, tmp.matrix);
       topRef.current.setColorAt(i, tmpColor.set(CANOPY_TOP[v]));
 
-      // Bush at base
-      tmp.position.set(t.x + 0.4 * s, 0.4 * s, t.z + 0.3 * s);
-      tmp.scale.setScalar(0.8 * s);
-      tmp.updateMatrix();
+      tmp.position.set(t.x + 0.5 * s, 0.4 * s, t.z + 0.35 * s);
+      tmp.scale.setScalar(0.7 * s); tmp.updateMatrix();
       bushRef.current.setMatrixAt(i, tmp.matrix);
-      bushRef.current.setColorAt(i, tmpColor.set(BUSH_COLOR));
+      bushRef.current.setColorAt(i, tmpColor.set("#1d7034"));
     });
     [trunkRef, botRef, midRef, topRef, bushRef].forEach((r) => {
       r.current.instanceMatrix.needsUpdate = true;
@@ -200,92 +242,65 @@ function Trees() {
 
   return (
     <>
-      {/* Trunks */}
       <instancedMesh ref={trunkRef} args={[undefined, undefined, data.length]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.5, 0.7, 1, 7]} />
-        <meshLambertMaterial vertexColors />
+        <cylinderGeometry args={[0.5, 0.7, 1, 7]} /><meshLambertMaterial vertexColors />
       </instancedMesh>
-      {/* Bottom canopy */}
-      <instancedMesh ref={botRef} args={[undefined, undefined, data.length]} castShadow receiveShadow>
-        <sphereGeometry args={[1, 8, 6]} />
-        <meshLambertMaterial vertexColors />
+      <instancedMesh ref={botRef} args={[undefined, undefined, data.length]} castShadow>
+        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial vertexColors />
       </instancedMesh>
-      {/* Mid canopy */}
-      <instancedMesh ref={midRef} args={[undefined, undefined, data.length]} castShadow receiveShadow>
-        <sphereGeometry args={[1, 8, 6]} />
-        <meshLambertMaterial vertexColors />
+      <instancedMesh ref={midRef} args={[undefined, undefined, data.length]} castShadow>
+        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial vertexColors />
       </instancedMesh>
-      {/* Top canopy */}
-      <instancedMesh ref={topRef} args={[undefined, undefined, data.length]} castShadow receiveShadow>
-        <sphereGeometry args={[1, 7, 5]} />
-        <meshLambertMaterial vertexColors />
+      <instancedMesh ref={topRef} args={[undefined, undefined, data.length]} castShadow>
+        <sphereGeometry args={[1, 7, 5]} /><meshLambertMaterial vertexColors />
       </instancedMesh>
-      {/* Bushes */}
-      <instancedMesh ref={bushRef} args={[undefined, undefined, data.length]} castShadow receiveShadow>
-        <sphereGeometry args={[1, 6, 5]} />
-        <meshLambertMaterial vertexColors />
+      <instancedMesh ref={bushRef} args={[undefined, undefined, data.length]} castShadow>
+        <sphereGeometry args={[1, 6, 5]} /><meshLambertMaterial vertexColors />
       </instancedMesh>
     </>
   );
 }
 
-// ─── Street Lamps ─────────────────────────────────────────────────────────────
+// ─── Street lamps at intersection corners ────────────────────────────────────
 function StreetLamps() {
   const positions = useMemo(() => {
-    const { size, cell, roadEvery, seaLine } = WORLD;
     const pts: [number, number][] = [];
-    for (let x = -size; x <= size; x += cell * roadEvery) {
-      for (let z = -size; z <= size; z += cell * roadEvery) {
-        if (z < seaLine + 20) continue;
-        if (Math.hypot(x, z) < 40) continue;
-        pts.push([x + 4, z + 4]);
-        pts.push([x - 4, z + 4]);
-        pts.push([x + 4, z - 4]);
-        pts.push([x - 4, z - 4]);
+    for (const ix of ROAD_LINES) {
+      for (const iz of ROAD_LINES) {
+        if (inPark(ix, iz)) continue;
+        if (iz < WORLD.seaLine + 10) continue;
+        const o = SIDEWALK_OFF;
+        pts.push([ix + o, iz + o], [ix - o, iz + o], [ix + o, iz - o], [ix - o, iz - o]);
       }
     }
     return pts;
   }, []);
 
-  const poleRef  = useRef<InstancedMesh>(null!);
-  const armRef   = useRef<InstancedMesh>(null!);
-  const globeRef = useRef<InstancedMesh>(null!);
+  const poleRef = useRef<InstancedMesh>(null!);
+  const armRef  = useRef<InstancedMesh>(null!);
+  const headRef = useRef<InstancedMesh>(null!);
 
   useLayoutEffect(() => {
     positions.forEach(([x, z], i) => {
-      // Pole
-      tmp.position.set(x, 2.1, z);
-      tmp.rotation.set(0, 0, 0);
-      tmp.scale.set(0.14, 4.2, 0.14);
-      tmp.updateMatrix();
+      tmp.position.set(x, 2.1, z); tmp.rotation.set(0, 0, 0); tmp.scale.set(0.14, 4.2, 0.14); tmp.updateMatrix();
       poleRef.current.setMatrixAt(i, tmp.matrix);
-
-      // Horizontal arm
-      tmp.position.set(x, 4.3, z + 0.6);
-      tmp.scale.set(0.10, 0.10, 1.3);
-      tmp.updateMatrix();
+      tmp.position.set(x, 4.3, z + 0.6); tmp.scale.set(0.1, 0.1, 1.3); tmp.updateMatrix();
       armRef.current.setMatrixAt(i, tmp.matrix);
-
-      // Globe / lamp head
-      tmp.position.set(x, 4.2, z + 1.2);
-      tmp.scale.setScalar(0.32);
-      tmp.updateMatrix();
-      globeRef.current.setMatrixAt(i, tmp.matrix);
+      tmp.position.set(x, 4.2, z + 1.2); tmp.scale.setScalar(0.32); tmp.updateMatrix();
+      headRef.current.setMatrixAt(i, tmp.matrix);
     });
-    [poleRef, armRef, globeRef].forEach((r) => { r.current.instanceMatrix.needsUpdate = true; });
+    [poleRef, armRef, headRef].forEach((r) => { r.current.instanceMatrix.needsUpdate = true; });
   }, [positions]);
 
   return (
     <>
       <instancedMesh ref={poleRef} args={[undefined, undefined, positions.length]} castShadow>
-        <cylinderGeometry args={[0.5, 0.6, 1, 6]} />
-        <meshLambertMaterial color="#9090a0" />
+        <cylinderGeometry args={[0.5, 0.6, 1, 6]} /><meshLambertMaterial color="#9090a0" />
       </instancedMesh>
       <instancedMesh ref={armRef} args={[undefined, undefined, positions.length]}>
-        <cylinderGeometry args={[0.5, 0.5, 1, 5]} />
-        <meshLambertMaterial color="#9090a0" />
+        <cylinderGeometry args={[0.5, 0.5, 1, 5]} /><meshLambertMaterial color="#9090a0" />
       </instancedMesh>
-      <instancedMesh ref={globeRef} args={[undefined, undefined, positions.length]}>
+      <instancedMesh ref={headRef} args={[undefined, undefined, positions.length]}>
         <sphereGeometry args={[1, 7, 5]} />
         <meshLambertMaterial color="#fff8e0" emissive="#ffe060" emissiveIntensity={1.0} />
       </instancedMesh>
@@ -293,191 +308,102 @@ function StreetLamps() {
   );
 }
 
-// ─── Monas Park (high-detail vertical slice) ──────────────────────────────────
+// ─── Monas park ──────────────────────────────────────────────────────────────
 function Bollard({ pos }: { pos: [number, number, number] }) {
   return (
     <mesh position={pos} castShadow>
       <cylinderGeometry args={[0.12, 0.14, 0.9, 8]} />
-      <meshLambertMaterial color="#c0b8a8" />
+      <meshLambertMaterial color="#c8c0b0" />
     </mesh>
   );
 }
-
 function FlowerPot({ pos }: { pos: [number, number, number] }) {
   return (
     <group position={pos}>
-      <mesh position={[0, 0.22, 0]}>
-        <cylinderGeometry args={[0.28, 0.18, 0.44, 8]} />
-        <meshLambertMaterial color="#c87848" />
-      </mesh>
-      <mesh position={[0, 0.52, 0]}>
-        <sphereGeometry args={[0.28, 7, 5]} />
-        <meshLambertMaterial color="#3da050" />
-      </mesh>
+      <mesh position={[0, 0.22, 0]}><cylinderGeometry args={[0.28, 0.18, 0.44, 8]} /><meshLambertMaterial color="#c87848" /></mesh>
+      <mesh position={[0, 0.52, 0]}><sphereGeometry args={[0.28, 7, 5]} /><meshLambertMaterial color="#e84878" /></mesh>
     </group>
   );
 }
 
 function MonasPark() {
-  // Bollard ring positions
-  const bollardRing = Array.from({ length: 24 }, (_, k) => {
-    const a = (k / 24) * Math.PI * 2;
-    return [Math.cos(a) * 34.5, 0.45, Math.sin(a) * 34.5] as [number, number, number];
+  const ring = Array.from({ length: 28 }, (_, k) => {
+    const a = (k / 28) * Math.PI * 2;
+    return [Math.cos(a) * (PARK_RADIUS - 2), 0.45, Math.sin(a) * (PARK_RADIUS - 2)] as [number, number, number];
   });
-
-  // Inner bollards around central plaza
-  const innerBollards = Array.from({ length: 16 }, (_, k) => {
+  const innerB = Array.from({ length: 16 }, (_, k) => {
     const a = (k / 16) * Math.PI * 2;
     return [Math.cos(a) * 12.5, 0.45, Math.sin(a) * 12.5] as [number, number, number];
   });
-
-  // Flower pots along pathways
-  const flowerPots: [number, number, number][] = [
+  const pots: [number, number, number][] = [
     [14, 0, 0], [-14, 0, 0], [0, 0, 14], [0, 0, -14],
     [10, 0, 10], [-10, 0, 10], [10, 0, -10], [-10, 0, -10],
-    [20, 0, 0], [-20, 0, 0], [0, 0, 20], [0, 0, -20],
+    [22, 0, 0], [-22, 0, 0], [0, 0, 22], [0, 0, -22],
   ];
 
   return (
     <group>
-      {/* Main green park circle */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]} receiveShadow>
-        <circleGeometry args={[36, 40]} />
+      {/* Ring road around the park (covers grid roads passing through center) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+        <ringGeometry args={[PARK_RADIUS, PARK_RADIUS + ROAD_HALF * 2, 56]} />
+        <meshLambertMaterial color="#353535" />
+      </mesh>
+      {/* Green park */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} receiveShadow>
+        <circleGeometry args={[PARK_RADIUS, 48]} />
         <meshLambertMaterial color="#4aaa38" />
       </mesh>
-
-      {/* Outer ring road */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-        <ringGeometry args={[33, 38, 48]} />
-        <meshLambertMaterial color="#c8c0aa" />
+      {/* Pathways */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+        <ringGeometry args={[21, 24, 44]} /><meshLambertMaterial color="#cdc5b2" />
       </mesh>
-
-      {/* Mid pathway ring */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-        <ringGeometry args={[21, 24, 40]} />
-        <meshLambertMaterial color="#cdc5b2" />
-      </mesh>
-
-      {/* 4 cross paths (N/S/E/W) */}
       {[0, Math.PI / 2, Math.PI, Math.PI * 1.5].map((a, i) => (
-        <mesh key={i} rotation={[-Math.PI / 2, 0, a]} position={[0, 0.05, 0]}>
-          <planeGeometry args={[4.5, 34]} />
-          <meshLambertMaterial color="#cdc5b2" />
+        <mesh key={i} rotation={[-Math.PI / 2, 0, a]} position={[0, 0.06, 0]}>
+          <planeGeometry args={[4.5, PARK_RADIUS * 0.92]} /><meshLambertMaterial color="#cdc5b2" />
         </mesh>
       ))}
-
-      {/* Inner plaza circle */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
-        <circleGeometry args={[10, 24]} />
-        <meshLambertMaterial color="#d8d0bc" />
-      </mesh>
-
-      {/* Fountain pool */}
+      {/* Central plaza */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.07, 0]}>
-        <circleGeometry args={[4, 24]} />
-        <meshLambertMaterial color="#5ab8d8" />
+        <circleGeometry args={[10, 24]} /><meshLambertMaterial color="#d8d0bc" />
       </mesh>
-      {/* Basin rim */}
-      <mesh position={[0, 0.28, 0]}>
-        <torusGeometry args={[4, 0.22, 6, 24]} />
-        <meshLambertMaterial color="#d0c8b0" />
+      {/* Fountain */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.08, 0]}>
+        <circleGeometry args={[4, 24]} /><meshLambertMaterial color="#5ab8d8" />
       </mesh>
-      {/* Fountain pillar */}
-      <mesh position={[0, 0.9, 0]}>
-        <cylinderGeometry args={[0.20, 0.28, 1.6, 8]} />
-        <meshLambertMaterial color="#d8d0bc" />
-      </mesh>
-      {/* Water sphere */}
-      <mesh position={[0, 2.0, 0]}>
-        <sphereGeometry args={[0.55, 9, 7]} />
-        <meshLambertMaterial color="#80d8f8" transparent opacity={0.75} />
-      </mesh>
-      {/* Small water jets */}
+      <mesh position={[0, 0.28, 0]}><torusGeometry args={[4, 0.22, 6, 24]} /><meshLambertMaterial color="#d0c8b0" /></mesh>
+      <mesh position={[0, 0.9, 0]}><cylinderGeometry args={[0.2, 0.28, 1.6, 8]} /><meshLambertMaterial color="#d8d0bc" /></mesh>
+      <mesh position={[0, 2.0, 0]}><sphereGeometry args={[0.55, 9, 7]} /><meshLambertMaterial color="#80d8f8" transparent opacity={0.75} /></mesh>
       {[0, 1, 2, 3, 4, 5].map((k) => {
         const a = (k / 6) * Math.PI * 2;
-        return (
-          <mesh key={k} position={[Math.cos(a) * 2.0, 1.5, Math.sin(a) * 2.0]}>
-            <sphereGeometry args={[0.18, 6, 5]} />
-            <meshLambertMaterial color="#a0e8ff" transparent opacity={0.8} />
-          </mesh>
-        );
+        return <mesh key={k} position={[Math.cos(a) * 2, 1.5, Math.sin(a) * 2]}><sphereGeometry args={[0.18, 6, 5]} /><meshLambertMaterial color="#a0e8ff" transparent opacity={0.8} /></mesh>;
       })}
-
-      {/* Benches — 8 around mid ring */}
+      {/* Benches */}
       {Array.from({ length: 8 }, (_, k) => {
-        const a = (k / 8) * Math.PI * 2;
-        const r = 17.5;
+        const a = (k / 8) * Math.PI * 2, r = 17.5;
         return (
           <group key={k} position={[Math.cos(a) * r, 0, Math.sin(a) * r]} rotation={[0, a + Math.PI / 2, 0]}>
-            <mesh position={[0, 0.5, 0]}>
-              <boxGeometry args={[1.4, 0.1, 0.42]} />
-              <meshLambertMaterial color="#9a6838" />
-            </mesh>
-            <mesh position={[0, 0.82, -0.17]}>
-              <boxGeometry args={[1.4, 0.42, 0.08]} />
-              <meshLambertMaterial color="#885c2c" />
-            </mesh>
-            {[-0.6, 0.6].map((x) => (
-              <mesh key={x} position={[x, 0.26, 0]}>
-                <boxGeometry args={[0.09, 0.52, 0.40]} />
-                <meshLambertMaterial color="#704820" />
-              </mesh>
-            ))}
+            <mesh position={[0, 0.5, 0]}><boxGeometry args={[1.4, 0.1, 0.42]} /><meshLambertMaterial color="#9a6838" /></mesh>
+            <mesh position={[0, 0.82, -0.17]}><boxGeometry args={[1.4, 0.42, 0.08]} /><meshLambertMaterial color="#885c2c" /></mesh>
+            {[-0.6, 0.6].map((x) => <mesh key={x} position={[x, 0.26, 0]}><boxGeometry args={[0.09, 0.52, 0.4]} /><meshLambertMaterial color="#704820" /></mesh>)}
           </group>
         );
       })}
-
-      {/* Bollards outer ring */}
-      {bollardRing.map((p, i) => <Bollard key={`bo${i}`} pos={p} />)}
-      {/* Bollards inner ring */}
-      {innerBollards.map((p, i) => <Bollard key={`bi${i}`} pos={p} />)}
-
-      {/* Flower pots */}
-      {flowerPots.map((p, i) => <FlowerPot key={`fp${i}`} pos={p} />)}
-
-      {/* Grass patches (small dark circles scattered) */}
-      {Array.from({ length: 18 }, (_, k) => {
-        const a = (k / 18) * Math.PI * 2;
-        const r = 26 + ((k * 7) % 5);
-        return (
-          <mesh key={k} rotation={[-Math.PI / 2, 0, 0]} position={[Math.cos(a) * r, 0.045, Math.sin(a) * r]}>
-            <circleGeometry args={[1.2, 8]} />
-            <meshLambertMaterial color="#3a9028" />
-          </mesh>
-        );
-      })}
-
+      {ring.map((p, i) => <Bollard key={`b${i}`} pos={p} />)}
+      {innerB.map((p, i) => <Bollard key={`ib${i}`} pos={p} />)}
+      {pots.map((p, i) => <FlowerPot key={`p${i}`} pos={p} />)}
       {/* Flagpole */}
-      <mesh position={[7, 8, 0]} castShadow>
-        <cylinderGeometry args={[0.07, 0.10, 16, 6]} />
-        <meshLambertMaterial color="#d8d4c8" />
-      </mesh>
-      <mesh position={[7 + 1.0, 15.2, 0]}>
-        <planeGeometry args={[2.0, 0.65]} />
-        <meshLambertMaterial color="#cb2026" side={2} />
-      </mesh>
-      <mesh position={[7 + 1.0, 14.82, 0]}>
-        <planeGeometry args={[2.0, 0.65]} />
-        <meshLambertMaterial color="#ffffff" side={2} />
-      </mesh>
+      <mesh position={[8, 8, 0]} castShadow><cylinderGeometry args={[0.07, 0.1, 16, 6]} /><meshLambertMaterial color="#d8d4c8" /></mesh>
+      <mesh position={[9, 15.2, 0]}><planeGeometry args={[2, 0.65]} /><meshLambertMaterial color="#cb2026" side={2} /></mesh>
+      <mesh position={[9, 14.82, 0]}><planeGeometry args={[2, 0.65]} /><meshLambertMaterial color="#ffffff" side={2} /></mesh>
     </group>
   );
 }
 
-// ─── District Labels ──────────────────────────────────────────────────────────
 function DistrictLabels() {
   return (
     <>
       {DISTRICTS.map((d) => (
-        <Text
-          key={d.id}
-          position={[d.pos[0], 40, d.pos[1]]}
-          fontSize={9}
-          color="#ffffff"
-          outlineWidth={0.5}
-          outlineColor="#000000"
-          anchorX="center"
-        >
+        <Text key={d.id} position={[d.pos[0], 42, d.pos[1]]} fontSize={9} color="#ffffff" outlineWidth={0.5} outlineColor="#000000" anchorX="center">
           {d.label}
         </Text>
       ))}
@@ -485,7 +411,6 @@ function DistrictLabels() {
   );
 }
 
-// ─── World root ───────────────────────────────────────────────────────────────
 export default function World() {
   const s = WORLD.size;
   return (
@@ -500,13 +425,14 @@ export default function World() {
       </RigidBody>
 
       {/* Sea */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, (-s + WORLD.seaLine) / 2]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, (-s + WORLD.seaLine) / 2]}>
         <planeGeometry args={[s * 2, WORLD.seaLine + s]} />
-        <meshLambertMaterial color="#3898cc" transparent opacity={0.88} />
+        <meshLambertMaterial color="#3898cc" transparent opacity={0.9} />
       </mesh>
 
-      <Roads />
-      <Sidewalks />
+      <Streets />
+      <LaneDashes />
+      <Crosswalks />
       <Buildings />
       <Trees />
       <StreetLamps />

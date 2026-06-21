@@ -61,7 +61,7 @@ function Monas(props: PlaceholderProps) {
 }
 
 // ─── Humanoid NPCs ────────────────────────────────────────────────────────────
-function makeHumanoid(shirt: string, skin = "#c8956b", pants = "#2b3a4a") {
+function makeHumanoid(shirt: string, skin = "#c8956b", pants = "#2b3a4a", hair = "#3a2616") {
   return function Humanoid(props: PlaceholderProps) {
     return (
       <group {...props}>
@@ -70,10 +70,10 @@ function makeHumanoid(shirt: string, skin = "#c8956b", pants = "#2b3a4a") {
           <boxGeometry args={[0.38, 0.38, 0.36]} />
           <meshLambertMaterial color={skin} />
         </mesh>
-        {/* Hair/hat (subtle top cap) */}
-        <mesh position={[0, 1.8, 0]}>
-          <boxGeometry args={[0.40, 0.10, 0.38]} />
-          <meshLambertMaterial color="#2a1a0a" />
+        {/* Hair (dark brown cap) */}
+        <mesh position={[0, 1.80, 0]}>
+          <boxGeometry args={[0.41, 0.12, 0.39]} />
+          <meshLambertMaterial color={hair} />
         </mesh>
         {/* Torso */}
         <mesh position={[0, 1.10, 0]} castShadow>
@@ -103,7 +103,7 @@ function makeHumanoid(shirt: string, skin = "#c8956b", pants = "#2b3a4a") {
         {/* Belt */}
         <mesh position={[0, 0.77, 0]}>
           <boxGeometry args={[0.45, 0.08, 0.29]} />
-          <meshLambertMaterial color="#1a1008" />
+          <meshLambertMaterial color="#3a2a18" />
         </mesh>
         {/* Left leg */}
         <mesh position={[-0.13, 0.44, 0]} castShadow>
@@ -118,12 +118,12 @@ function makeHumanoid(shirt: string, skin = "#c8956b", pants = "#2b3a4a") {
         {/* Left foot */}
         <mesh position={[-0.13, 0.14, 0.06]}>
           <boxGeometry args={[0.16, 0.12, 0.32]} />
-          <meshLambertMaterial color="#1a1008" />
+          <meshLambertMaterial color="#33241a" />
         </mesh>
         {/* Right foot */}
         <mesh position={[0.13, 0.14, 0.06]}>
           <boxGeometry args={[0.16, 0.12, 0.32]} />
-          <meshLambertMaterial color="#1a1008" />
+          <meshLambertMaterial color="#33241a" />
         </mesh>
       </group>
     );
@@ -191,7 +191,7 @@ function makeScooter(color: string) {
         {/* Headlight housing */}
         <mesh position={[0, WR + 0.56, 0.91]}>
           <boxGeometry args={[0.40, 0.22, 0.06]} />
-          <meshLambertMaterial color="#282828" />
+          <meshLambertMaterial color="#3a3a3a" />
         </mesh>
 
         {/* === HANDLEBAR === */}
@@ -203,7 +203,7 @@ function makeScooter(color: string) {
         {[-0.35, 0.35].map((x) => (
           <mesh key={x} position={[x, WR + 0.96, 0.76]} rotation={[0.3, 0, 0]}>
             <cylinderGeometry args={[0.055, 0.045, 0.18, 6]} />
-            <meshLambertMaterial color="#111" />
+            <meshLambertMaterial color="#333" />
           </mesh>
         ))}
 
@@ -232,7 +232,7 @@ function makeScooter(color: string) {
         {/* === FRONT WHEEL === */}
         <mesh position={[0, WR, 0.80]} rotation={[0, 0, Math.PI / 2]} castShadow>
           <cylinderGeometry args={[WR, WR, 0.18, 16]} />
-          <meshLambertMaterial color="#161616" />
+          <meshLambertMaterial color="#2b2b2b" />
         </mesh>
         {/* Front hub */}
         <mesh position={[0, WR, 0.80]} rotation={[0, 0, Math.PI / 2]}>
@@ -243,7 +243,7 @@ function makeScooter(color: string) {
         {/* === REAR WHEEL === */}
         <mesh position={[0, WR, -0.74]} rotation={[0, 0, Math.PI / 2]} castShadow>
           <cylinderGeometry args={[WR, WR, 0.18, 16]} />
-          <meshLambertMaterial color="#161616" />
+          <meshLambertMaterial color="#2b2b2b" />
         </mesh>
         {/* Rear hub */}
         <mesh position={[0, WR, -0.74]} rotation={[0, 0, Math.PI / 2]}>
@@ -317,7 +317,7 @@ function makeCar(color: string, len = 4.5, w = 1.8, bodyH = 0.72, cabH = 0.72, c
             {/* Tire */}
             <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
               <cylinderGeometry args={[wheelR, wheelR, 0.22, 14]} />
-              <meshLambertMaterial color="#181818" />
+              <meshLambertMaterial color="#2b2b2b" />
             </mesh>
             {/* Hubcap */}
             <mesh rotation={[0, 0, Math.PI / 2]}>
@@ -330,7 +330,7 @@ function makeCar(color: string, len = 4.5, w = 1.8, bodyH = 0.72, cabH = 0.72, c
         {/* Grill */}
         <mesh position={[0, bodyY - 0.05, len / 2 + 0.02]}>
           <boxGeometry args={[w * 0.5, bodyH * 0.35, 0.06]} />
-          <meshLambertMaterial color="#222" />
+          <meshLambertMaterial color="#333" />
         </mesh>
       </group>
     );
@@ -375,7 +375,7 @@ function Bus(props: PlaceholderProps) {
           <group key={`${x}-${z}`} position={[x, wheelR, z]}>
             <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
               <cylinderGeometry args={[wheelR, wheelR, 0.28, 14]} />
-              <meshLambertMaterial color="#181818" />
+              <meshLambertMaterial color="#2b2b2b" />
             </mesh>
             <mesh rotation={[0, 0, Math.PI / 2]}>
               <cylinderGeometry args={[wheelR * 0.5, wheelR * 0.5, 0.30, 8]} />
@@ -420,9 +420,48 @@ function VendorCart(props: PlaceholderProps) {
       {[-0.7, 0.7].map((x) => (
         <mesh key={x} position={[x, 0.24, 0.48]} rotation={[Math.PI / 2, 0, 0]} castShadow>
           <cylinderGeometry args={[0.24, 0.24, 0.10, 12]} />
-          <meshLambertMaterial color="#222" />
+          <meshLambertMaterial color="#333" />
         </mesh>
       ))}
+    </group>
+  );
+}
+
+// ─── Player hero character (Jakarta jacket + backpack) ───────────────────────
+function PlayerChar(props: PlaceholderProps) {
+  const skin = "#caa176";
+  const jacket = "#27406e";   // navy jacket
+  const jacketTrim = "#e8e8ec";
+  const pants = "#2a2f3a";
+  return (
+    <group {...props}>
+      {/* Head */}
+      <mesh position={[0, 1.60, 0]} castShadow><boxGeometry args={[0.38, 0.38, 0.36]} /><meshLambertMaterial color={skin} /></mesh>
+      {/* Hair */}
+      <mesh position={[0, 1.82, 0]}><boxGeometry args={[0.41, 0.13, 0.39]} /><meshLambertMaterial color="#241608" /></mesh>
+      {/* Torso jacket */}
+      <mesh position={[0, 1.12, 0]} castShadow><boxGeometry args={[0.48, 0.64, 0.30]} /><meshLambertMaterial color={jacket} /></mesh>
+      {/* Jacket front zipper trim */}
+      <mesh position={[0, 1.12, 0.156]}><boxGeometry args={[0.06, 0.62, 0.02]} /><meshLambertMaterial color={jacketTrim} /></mesh>
+      {/* Chest "JAKARTA" badge */}
+      <mesh position={[0.13, 1.30, 0.158]}><boxGeometry args={[0.16, 0.10, 0.02]} /><meshLambertMaterial color="#f0c020" /></mesh>
+      {/* Upper arms (jacket) */}
+      <mesh position={[-0.32, 1.18, 0]} rotation={[0.12, 0, 0.16]} castShadow><boxGeometry args={[0.15, 0.46, 0.17]} /><meshLambertMaterial color={jacket} /></mesh>
+      <mesh position={[0.32, 1.18, 0]} rotation={[-0.12, 0, -0.16]} castShadow><boxGeometry args={[0.15, 0.46, 0.17]} /><meshLambertMaterial color={jacket} /></mesh>
+      {/* Forearms (skin) */}
+      <mesh position={[-0.34, 0.80, 0.03]} castShadow><boxGeometry args={[0.13, 0.38, 0.15]} /><meshLambertMaterial color={skin} /></mesh>
+      <mesh position={[0.34, 0.80, 0.03]} castShadow><boxGeometry args={[0.13, 0.38, 0.15]} /><meshLambertMaterial color={skin} /></mesh>
+      {/* Backpack */}
+      <mesh position={[0, 1.14, -0.24]} castShadow><boxGeometry args={[0.40, 0.50, 0.20]} /><meshLambertMaterial color="#3a4a5a" /></mesh>
+      <mesh position={[0, 1.22, -0.35]}><boxGeometry args={[0.30, 0.30, 0.04]} /><meshLambertMaterial color="#566678" /></mesh>
+      {/* Belt */}
+      <mesh position={[0, 0.78, 0]}><boxGeometry args={[0.49, 0.09, 0.31]} /><meshLambertMaterial color="#3a2a18" /></mesh>
+      {/* Legs */}
+      <mesh position={[-0.13, 0.44, 0]} castShadow><boxGeometry args={[0.18, 0.54, 0.23]} /><meshLambertMaterial color={pants} /></mesh>
+      <mesh position={[0.13, 0.44, 0]} castShadow><boxGeometry args={[0.18, 0.54, 0.23]} /><meshLambertMaterial color={pants} /></mesh>
+      {/* Shoes */}
+      <mesh position={[-0.13, 0.13, 0.06]}><boxGeometry args={[0.17, 0.13, 0.34]} /><meshLambertMaterial color="#e8e8ec" /></mesh>
+      <mesh position={[0.13, 0.13, 0.06]}><boxGeometry args={[0.17, 0.13, 0.34]} /><meshLambertMaterial color="#e8e8ec" /></mesh>
     </group>
   );
 }
@@ -435,15 +474,16 @@ export function registerPlaceholders() {
 
   registerAsset("monas", { placeholder: Monas });
 
-  // Player + NPC archetypes
-  registerAsset("player",        { placeholder: makeHumanoid("#3b6ea5", "#c8956b", "#2a3a50") });
-  registerAsset("npc_pedestrian",{ placeholder: makeHumanoid("#5a8f5a", "#c8956b", "#2a3a4a") });
-  registerAsset("npc_office",    { placeholder: makeHumanoid("#e8e8e8", "#e0b890", "#1a1a2a") });
-  registerAsset("npc_student",   { placeholder: makeHumanoid("#ffffff", "#c8956b", "#1a3080") });
-  registerAsset("npc_ojol",      { placeholder: makeHumanoid("#2b8a3e", "#c8956b", "#181818") });
-  registerAsset("npc_police",    { placeholder: makeHumanoid("#6080b0", "#e0b890", "#1c2530") });
-  registerAsset("npc_elderly",   { placeholder: makeHumanoid("#a0907a", "#d8a870", "#3a3028") });
-  registerAsset("enemy_preman",  { placeholder: makeHumanoid("#1a1a1a", "#b07848", "#0a0a0a") });
+  // Player — distinct hero look (Jakarta jacket + backpack)
+  registerAsset("player",        { placeholder: PlayerChar });
+  // NPC archetypes (all vivid; no black)
+  registerAsset("npc_pedestrian",{ placeholder: makeHumanoid("#5a9f5a", "#c8956b", "#33415a") });
+  registerAsset("npc_office",    { placeholder: makeHumanoid("#eaeaea", "#e0b890", "#384a64") });
+  registerAsset("npc_student",   { placeholder: makeHumanoid("#ffffff", "#c8956b", "#22408a") });
+  registerAsset("npc_ojol",      { placeholder: makeHumanoid("#2faa48", "#c8956b", "#2a2a38") });
+  registerAsset("npc_police",    { placeholder: makeHumanoid("#6a90c8", "#e0b890", "#2c3a4e") });
+  registerAsset("npc_elderly",   { placeholder: makeHumanoid("#b09a82", "#d8a870", "#5a4a3a", "#cfcfcf") });
+  registerAsset("enemy_preman",  { placeholder: makeHumanoid("#5a2733", "#b07848", "#2c2c38", "#241008") });
 
   // Vehicles
   registerAsset("veh_scooter",   { placeholder: makeScooter("#e02828") });

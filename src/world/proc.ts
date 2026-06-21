@@ -1,5 +1,9 @@
 import { WORLD, DISTRICTS, type DistrictDef } from "./worldConfig";
+import {
+  BLOCK, ROAD_LINES, SIDEWALK_OFF, isBuildable, inPark, nearestLine,
+} from "./grid";
 
+/** Deterministic PRNG (mulberry32) so the city is identical every load. */
 function mulberry32(seed: number) {
   let a = seed >>> 0;
   return () => {
@@ -18,114 +22,93 @@ export interface Building {
   d: number;
   h: number;
   color: string;
+  /** "office" → blue glass windows; "home" → warm windows. */
+  kind: "office" | "home";
 }
 
 export interface TreePos {
   x: number;
   z: number;
   scale: number;
-  variant: number; // 0-4
+  variant: number;
 }
 
 function nearestDistrict(x: number, z: number): { d: DistrictDef; dist: number } {
   let best = DISTRICTS[0];
   let bestDist = Infinity;
   for (const d of DISTRICTS) {
-    const dx = x - d.pos[0];
-    const dz = z - d.pos[1];
-    const dist = Math.hypot(dx, dz);
+    const dist = Math.hypot(x - d.pos[0], z - d.pos[1]);
     if (dist < bestDist) { bestDist = dist; best = d; }
   }
   return { d: best, dist: bestDist };
 }
 
-export function generateCity(): {
-  buildings: Building[];
-  roads: { x: number; z: number }[];
-  trees: TreePos[];
-} {
+let cache: { buildings: Building[]; trees: TreePos[] } | null = null;
+
+export function generateCity(): { buildings: Building[]; trees: TreePos[] } {
+  if (cache) return cache;
+
   const rng = mulberry32(WORLD.seed);
-  const { size, cell, roadEvery, seaLine } = WORLD;
   const buildings: Building[] = [];
-  const roads: { x: number; z: number }[] = [];
   const trees: TreePos[] = [];
 
-  // Track road cells for tree placement
-  const roadCells = new Set<string>();
+  // ── Buildings: one plot grid; keep only buildable interiors ──
+  const PLOT = 15;
+  for (let x = -WORLD.size; x <= WORLD.size; x += PLOT) {
+    for (let z = -WORLD.size; z <= WORLD.size; z += PLOT) {
+      // jittered plot center
+      const cx = x + (rng() - 0.5) * 4;
+      const cz = z + (rng() - 0.5) * 4;
+      if (!isBuildable(cx, cz)) continue;
 
-  const min = -size;
-  const max = size;
-  let i = 0;
+      const { d, dist } = nearestDistrict(cx, cz);
+      const inCity = dist < d.radius * BLOCK * 0.5;
+      if (!inCity && rng() > 0.4) continue; // outskirts thin out
 
-  for (let x = min; x <= max; x += cell, i++) {
-    let j = 0;
-    for (let z = min; z <= max; z += cell, j++) {
-      if (z < seaLine) continue;
-      const isRoadI = i % roadEvery === 0;
-      const isRoadJ = j % roadEvery === 0;
-      const isRoad = isRoadI || isRoadJ;
-
-      if (isRoad) {
-        roads.push({ x: x + cell / 2, z: z + cell / 2 });
-        roadCells.add(`${i}|${j}`);
-        continue;
-      }
-
-      const { d, dist } = nearestDistrict(x, z);
-      const inCity = dist < d.radius * cell;
-      if (!inCity && rng() > 0.35) continue;
-      if (d.id === "monas" && dist < cell * 3) continue;
-
-      const falloff = Math.max(0.2, 1 - dist / (d.radius * cell));
-      const baseH = 8 + rng() * 14;
-      const h = baseH * d.density * (0.6 + falloff) + rng() * 6;
-      const w = cell * (0.55 + rng() * 0.3);
-      const dpt = cell * (0.55 + rng() * 0.3);
-
-      // Pick color from district palette
+      const falloff = Math.max(0.25, 1 - dist / (d.radius * BLOCK));
+      const baseH = 7 + rng() * 12;
+      const h = baseH * d.density * (0.55 + falloff) + rng() * 5;
+      const w = 8 + rng() * 4;
+      const dpt = 8 + rng() * 4;
       const colorIdx = Math.floor(rng() * d.colors.length);
+      const kind: Building["kind"] = h > 26 ? "office" : rng() > 0.5 ? "office" : "home";
 
-      buildings.push({ x: x + cell / 2, z: z + cell / 2, w, d: dpt, h, color: d.colors[colorIdx] });
+      buildings.push({ x: cx, z: cz, w, d: dpt, h, color: d.colors[colorIdx], kind });
     }
   }
 
-  // Trees: alongside roads at sidewalk positions
-  // Re-scan to find road adjacency
-  i = 0;
-  for (let x = min; x <= max; x += cell, i++) {
-    let j = 0;
-    for (let z = min; z <= max; z += cell, j++) {
-      if (z < seaLine + 20) continue;
-      // Place tree at edge of a road cell
-      const isRoadI = i % roadEvery === 0;
-      const isRoadJ = j % roadEvery === 0;
-      if (!(isRoadI || isRoadJ)) continue;
-      // Only at intersections and every other road-cell to space them out
-      if (isRoadI && isRoadJ) continue; // skip exact intersections
-      if (rng() > 0.28) continue; // sparse
-      // Avoid Monas center
-      const cx = x + cell / 2;
-      const cz = z + cell / 2;
-      if (Math.hypot(cx, cz) < 38) continue;
-      // Place tree slightly offset from road center
-      const offset = cell * 0.38 * (rng() > 0.5 ? 1 : -1);
-      const tx = isRoadJ ? cx : cx + offset;
-      const tz = isRoadI ? cz : cz + offset;
-      trees.push({ x: tx, z: tz, scale: 0.75 + rng() * 0.55, variant: (rng() * 5) | 0 });
+  // ── Trees: line every road with trees on both sidewalk sides ──
+  const tRng = mulberry32(WORLD.seed + 7);
+  const TREE_STEP = 14;
+  for (const line of ROAD_LINES) {
+    // Trees beside E-W roads (z = line): vary x
+    for (let x = -WORLD.size + 10; x <= WORLD.size - 10; x += TREE_STEP) {
+      if (Math.abs(nearestLine(x)) < 0.001 && Math.abs(x) <= 6) continue; // skip dead-center
+      for (const side of [1, -1] as const) {
+        const tx = x + (tRng() - 0.5) * 3;
+        const tz = line + side * SIDEWALK_OFF;
+        if (tz < WORLD.seaLine + 6) continue;
+        if (inPark(tx, tz)) continue;
+        // skip near intersections (leave corners clear for lamps/crosswalks)
+        if (Math.abs(x - nearestLine(x)) < 7) continue;
+        if (tRng() > 0.55) continue;
+        trees.push({ x: tx, z: tz, scale: 0.8 + tRng() * 0.5, variant: (tRng() * 5) | 0 });
+      }
     }
   }
 
-  // Monas park trees (ring)
-  const treeRng = mulberry32(WORLD.seed + 7);
-  for (let k = 0; k < 24; k++) {
-    const a = (k / 24) * Math.PI * 2;
-    const r = 24 + (treeRng() - 0.5) * 4;
-    trees.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, scale: 1.0 + treeRng() * 0.5, variant: (treeRng() * 5) | 0 });
+  // ── Monas park trees (lush rings, matches reference aerial) ──
+  for (let k = 0; k < 28; k++) {
+    const a = (k / 28) * Math.PI * 2;
+    const r = 28 + (tRng() - 0.5) * 4;
+    trees.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, scale: 1.1 + tRng() * 0.5, variant: (tRng() * 5) | 0 });
   }
-  for (let k = 0; k < 16; k++) {
-    const a = (k / 16) * Math.PI * 2 + 0.2;
-    trees.push({ x: Math.cos(a) * 15, z: Math.sin(a) * 15, scale: 0.9 + treeRng() * 0.4, variant: (treeRng() * 5) | 0 });
+  for (let k = 0; k < 18; k++) {
+    const a = (k / 18) * Math.PI * 2 + 0.25;
+    const r = 15 + (tRng() - 0.5) * 2;
+    trees.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, scale: 0.95 + tRng() * 0.4, variant: (tRng() * 5) | 0 });
   }
 
-  return { buildings, roads, trees };
+  cache = { buildings, trees };
+  return cache;
 }
