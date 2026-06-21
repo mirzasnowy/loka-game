@@ -4,6 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Loka — Open World Indonesia",
   description: "Stylized low-poly open-world Jakarta.",
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
@@ -11,6 +12,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

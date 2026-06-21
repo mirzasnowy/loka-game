@@ -198,30 +198,43 @@ function Toast() {
 /* ----------------------------- mobile controls ---------------------------- */
 
 function MobileControls() {
+  const equipped = useGame((s) => s.equipped);
   return (
     <>
       <LookPad />
       <Joystick />
-      {/* Combat cluster */}
-      <div style={{ position: "absolute", right: 16, bottom: 24, display: "grid", gridTemplateColumns: "60px 60px", gap: 10, pointerEvents: "auto" }}>
-        <ActBtn action="kick" label="Tendang" color="#8e24aa" />
-        <ActBtn action="punch" label="Pukul" color="#d32f2f" />
-        <HoldBlock />
-        <ActBtn action="jump" label="Lompat" color="#1565c0" />
-        <ActBtn action="dodge" label="Hindar" color="#00838f" />
-        <ActBtn action="interact" label="Aksi (E)" color="#2e7d32" />
-      </div>
-      {/* Gun cluster (left of combat) */}
-      <div style={{ position: "absolute", right: 150, bottom: 24, display: "flex", flexDirection: "column", gap: 10, pointerEvents: "auto", alignItems: "center" }}>
-        <ActBtn action="fire" label="Tembak" color="#e53935" big />
-        <div style={{ display: "flex", gap: 8 }}>
-          <ActBtn action="reload" label="Isi" color="#5d4037" small />
-          <ActBtn action="swap" label="Senjata" color="#37474f" small />
+      
+      {/* Unified Action Cluster (Bottom Right) */}
+      <div style={{ position: "absolute", right: 24, bottom: 32, display: "grid", gridTemplateColumns: "70px 70px", gap: 14, pointerEvents: "auto", alignItems: "end", justifyItems: "center" }}>
+        
+        {/* Left Column of Buttons */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <HoldBlock />
+          <ActBtn action="dodge" label="Hindar" color="rgba(0,131,143,0.8)" />
+          {equipped === "pistol" && <ActBtn action="reload" label="Isi" color="rgba(93,64,55,0.8)" />}
         </div>
+        
+        {/* Right Column of Buttons (Main Actions) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <ActBtn action="jump" label="Lompat" color="rgba(21,101,192,0.8)" />
+          {equipped === "pistol" ? (
+             <ActBtn action="fire" label="Tembak" color="rgba(229,57,53,0.9)" big />
+          ) : (
+             <ActBtn action="punch" label="Pukul" color="rgba(211,47,47,0.9)" big />
+          )}
+        </div>
+        
       </div>
-      {/* Inventory button */}
+      
+      {/* Auxiliary Buttons (Above Action Cluster) */}
+      <div style={{ position: "absolute", right: 24, bottom: 220, display: "flex", flexDirection: "column", gap: 10, pointerEvents: "auto", alignItems: "flex-end" }}>
+        <ActBtn action="interact" label="Aksi (E)" color="rgba(46,125,50,0.8)" small />
+        <ActBtn action="swap" label="Senjata" color="rgba(55,71,79,0.8)" small />
+      </div>
+
+      {/* Inventory button (Top Left) */}
       <button data-ui="1" onPointerDown={(e) => { e.preventDefault(); input.press("inv"); }}
-        style={{ position: "absolute", left: 12, top: 92, width: 52, height: 52, borderRadius: 12, border: "none", background: "rgba(40,46,58,0.85)", color: "#fff", fontSize: 11, fontWeight: 700, pointerEvents: "auto", touchAction: "none" }}>
+        style={{ position: "absolute", left: 16, top: 120, width: 56, height: 56, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.15)", background: "rgba(22,26,34,0.75)", backdropFilter: "blur(4px)", color: "#fff", fontSize: 13, fontWeight: 700, pointerEvents: "auto", touchAction: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
         🎒 Tas
       </button>
     </>

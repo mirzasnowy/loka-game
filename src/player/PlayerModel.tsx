@@ -74,13 +74,29 @@ export default function PlayerModel() {
     armL.current.rotation.z = 0.12; // slight outward
     armR.current.rotation.z = -0.12;
 
-    // PUNCH — right arm jab forward (snappy, overrides)
-    const pt = (now - avatar.punchAt) / 230;
+    // PUNCH — jab, hook, uppercut
+    const pt = (now - avatar.punchAt) / (avatar.comboCount >= 3 ? 350 : 250);
     if (pt >= 0 && pt < 1) {
       const k = Math.sin(pt * Math.PI);
-      armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -1.7, k);
-      armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -0.7, k * 0.6); // guard
-      bodyG.current.rotation.y = MathUtils.lerp(0, -0.35, k);
+      if (avatar.comboCount === 1) {
+        // Jab (right arm forward)
+        armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -1.7, k);
+        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -0.7, k * 0.6); // guard
+        bodyG.current.rotation.y = MathUtils.lerp(0, -0.35, k);
+      } else if (avatar.comboCount === 2) {
+        // Hook (left arm swinging from side)
+        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -1.4, k);
+        armL.current.rotation.z = MathUtils.lerp(armL.current.rotation.z, -1.0, k);
+        armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -0.7, k * 0.6); // guard
+        bodyG.current.rotation.y = MathUtils.lerp(0, 0.45, k);
+      } else {
+        // Uppercut (right arm scooping up, jump slightly)
+        armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -2.4, k);
+        armR.current.rotation.z = MathUtils.lerp(armR.current.rotation.z, 0.4, k);
+        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -0.7, k * 0.6); // guard
+        bodyG.current.rotation.y = MathUtils.lerp(0, -0.2, k);
+        bodyG.current.position.y += k * 0.15; // little hop
+      }
     } else {
       bodyG.current.rotation.y = MathUtils.lerp(bodyG.current.rotation.y, 0, sm);
     }

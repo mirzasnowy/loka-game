@@ -47,6 +47,7 @@ const fwd = new Vector3();
 function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
   const group = useRef<Group>(null!);
   const bar = useRef<Group>(null!);
+  const blood = useRef<Group>(null!);
   const cooldown = useRef(0);
   const { camera } = useThree();
 
@@ -120,7 +121,7 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
     g.position.set(entry.pos[0] + fx, 0, entry.pos[2] + fz);
     g.scale.setScalar(sc);
 
-    // HP bar faces camera.
+    // HP bar faces camera + blood effect
     if (bar.current) {
       bar.current.lookAt(camera.position);
       const fg = bar.current.children[1] as Mesh;
@@ -128,11 +129,36 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
       fg.scale.x = ratio;
       fg.position.x = -(1 - ratio) * 0.5;
     }
+    if (blood.current) {
+      if (entry.hitAt && now - entry.hitAt < 200) {
+        blood.current.visible = true;
+        const bk = (now - entry.hitAt) / 200;
+        blood.current.scale.setScalar(1 + bk * 2);
+        blood.current.position.y = 1 + bk;
+        (blood.current.children[0] as Mesh).material.opacity = 1 - bk;
+        (blood.current.children[1] as Mesh).material.opacity = 1 - bk;
+      } else {
+        blood.current.visible = false;
+      }
+    }
   });
 
   return (
     <group ref={group} position={spawn.pos}>
       <Asset id="enemy_preman" />
+      
+      {/* Blood burst effect */}
+      <group ref={blood} visible={false}>
+        <mesh position={[0.2, 0, 0.1]} rotation={[0.2, 0.4, 0]}>
+          <planeGeometry args={[0.3, 0.3]} />
+          <meshBasicMaterial color="#d32f2f" transparent opacity={0.8} />
+        </mesh>
+        <mesh position={[-0.2, 0.1, 0.1]} rotation={[-0.1, -0.3, 0.2]}>
+          <planeGeometry args={[0.25, 0.25]} />
+          <meshBasicMaterial color="#b71c1c" transparent opacity={0.8} />
+        </mesh>
+      </group>
+
       <group ref={bar} position={[0, 1.6, 0]}>
         <mesh>
           <planeGeometry args={[1, 0.12]} />
@@ -164,8 +190,13 @@ export default function CombatSystem() {
     const kick = input.consume("kick");
     if (punch || kick) {
       // fire the strike animation immediately on input (even if it misses)
-      if (kick) avatar.kickAt = performance.now();
-      else avatar.punchAt = performance.now();
+      if (kick) {
+        avatar.kickAt = performance.now();
+        avatar.comboCount = 1;
+      } else {
+        avatar.punchAt = performance.now();
+        avatar.comboCount = combo.current.count + 1; // predict next combo
+      }
       const dmg = kick ? KICK_DMG : PUNCH_DMG;
       const [px, , pz] = st.runtime.pos;
       const yaw = st.runtime.facing;

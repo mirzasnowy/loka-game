@@ -96,6 +96,19 @@ function makeHumanoid(shirt: string, skin = "#c8956b", pants = "#2b3a4a", hair =
           <boxGeometry args={[0.38, 0.38, 0.36]} />
           <meshLambertMaterial color={skin} />
         </mesh>
+        {/* Face details (Eyes and Mouth) */}
+        <mesh position={[-0.08, 1.62, 0.185]}>
+          <boxGeometry args={[0.06, 0.06, 0.02]} />
+          <meshLambertMaterial color="#111" />
+        </mesh>
+        <mesh position={[0.08, 1.62, 0.185]}>
+          <boxGeometry args={[0.06, 0.06, 0.02]} />
+          <meshLambertMaterial color="#111" />
+        </mesh>
+        <mesh position={[0, 1.50, 0.185]}>
+          <boxGeometry args={[0.12, 0.04, 0.02]} />
+          <meshLambertMaterial color="#421" />
+        </mesh>
         {/* Hair (dark brown cap) */}
         <mesh position={[0, 1.80, 0]}>
           <boxGeometry args={[0.41, 0.12, 0.39]} />
@@ -559,9 +572,28 @@ function PlayerChar(props: PlaceholderProps) {
   return (
     <group {...props}>
       {/* Head */}
-      <mesh position={[0, 1.60, 0]} castShadow><boxGeometry args={[0.38, 0.38, 0.36]} /><meshLambertMaterial color={skin} /></mesh>
-      {/* Hair */}
-      <mesh position={[0, 1.82, 0]}><boxGeometry args={[0.41, 0.13, 0.39]} /><meshLambertMaterial color="#241608" /></mesh>
+        <mesh position={[0, 1.60, 0]} castShadow>
+          <boxGeometry args={[0.38, 0.38, 0.36]} />
+          <meshLambertMaterial color={skin} />
+        </mesh>
+        {/* Face details (Eyes and Mouth) */}
+        <mesh position={[-0.08, 1.64, 0.185]}>
+          <boxGeometry args={[0.06, 0.06, 0.02]} />
+          <meshLambertMaterial color="#111" />
+        </mesh>
+        <mesh position={[0.08, 1.64, 0.185]}>
+          <boxGeometry args={[0.06, 0.06, 0.02]} />
+          <meshLambertMaterial color="#111" />
+        </mesh>
+        <mesh position={[0, 1.52, 0.185]}>
+          <boxGeometry args={[0.12, 0.04, 0.02]} />
+          <meshLambertMaterial color="#421" />
+        </mesh>
+        {/* Hair */}
+        <mesh position={[0, 1.82, 0]}>
+          <boxGeometry args={[0.41, 0.13, 0.39]} />
+          <meshLambertMaterial color="#241608" />
+        </mesh>
       {/* Torso jacket */}
       <mesh position={[0, 1.12, 0]} castShadow><boxGeometry args={[0.48, 0.64, 0.30]} /><meshLambertMaterial color={jacket} /></mesh>
       {/* Jacket front zipper trim */}

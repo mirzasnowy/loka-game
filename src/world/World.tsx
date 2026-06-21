@@ -72,22 +72,22 @@ function Buildings() {
   return (
     <>
       <instancedMesh ref={bodyRef} args={[undefined, undefined, n]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors emissive="#20242b" emissiveIntensity={0.55} />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial emissive="#20242b" emissiveIntensity={0.55} />
       </instancedMesh>
       <instancedMesh ref={roofRef} args={[undefined, undefined, n]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors emissive="#1c2026" emissiveIntensity={0.5} />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial emissive="#1c2026" emissiveIntensity={0.5} />
       </instancedMesh>
       <instancedMesh ref={winRef} args={[undefined, undefined, n]}>
-        <planeGeometry args={[1, 1]} /><meshLambertMaterial vertexColors transparent opacity={0.62} />
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial transparent opacity={0.62} />
       </instancedMesh>
       <instancedMesh ref={win2Ref} args={[undefined, undefined, n]}>
-        <planeGeometry args={[1, 1]} /><meshLambertMaterial vertexColors transparent opacity={0.62} />
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial transparent opacity={0.62} />
       </instancedMesh>
       <instancedMesh ref={doorRef} args={[undefined, undefined, n]}>
-        <planeGeometry args={[1, 1]} /><meshLambertMaterial vertexColors transparent opacity={0.85} />
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial transparent opacity={0.85} />
       </instancedMesh>
       <instancedMesh ref={acRef} args={[undefined, undefined, n]} castShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial />
       </instancedMesh>
     </>
   );
@@ -268,19 +268,19 @@ function Trees() {
   return (
     <>
       <instancedMesh ref={trunkRef} args={[undefined, undefined, data.length]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.5, 0.7, 1, 7]} /><meshLambertMaterial vertexColors />
+        <cylinderGeometry args={[0.5, 0.7, 1, 7]} /><meshLambertMaterial />
       </instancedMesh>
       <instancedMesh ref={botRef} args={[undefined, undefined, data.length]} castShadow>
-        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial vertexColors />
+        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial />
       </instancedMesh>
       <instancedMesh ref={midRef} args={[undefined, undefined, data.length]} castShadow>
-        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial vertexColors />
+        <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial />
       </instancedMesh>
       <instancedMesh ref={topRef} args={[undefined, undefined, data.length]} castShadow>
-        <sphereGeometry args={[1, 7, 5]} /><meshLambertMaterial vertexColors />
+        <sphereGeometry args={[1, 7, 5]} /><meshLambertMaterial />
       </instancedMesh>
       <instancedMesh ref={bushRef} args={[undefined, undefined, data.length]} castShadow>
-        <sphereGeometry args={[1, 6, 5]} /><meshLambertMaterial vertexColors />
+        <sphereGeometry args={[1, 6, 5]} /><meshLambertMaterial />
       </instancedMesh>
     </>
   );

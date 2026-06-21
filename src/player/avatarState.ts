@@ -13,5 +13,6 @@ export const avatar = {
   jumpAt: 0,       // performance.now() of last jump
   hurtAt: 0,       // performance.now() of last damage taken (flinch)
   fireAt: 0,       // performance.now() of last gunshot (recoil + muzzle flash)
+  comboCount: 1,   // 1=jab, 2=hook, 3+=uppercut
   weapon: "fists" as "fists" | "pistol",
 };

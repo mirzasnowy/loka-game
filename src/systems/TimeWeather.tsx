@@ -2,6 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
+import { Sky, Stars, Clouds, Cloud } from "@react-three/drei";
 import {
   DirectionalLight, AmbientLight, HemisphereLight,
   Color, Points, BufferGeometry, Float32BufferAttribute,
@@ -175,6 +176,16 @@ export default function TimeWeather() {
       <directionalLight position={[-70, 50, -60]} intensity={0.7} color="#cfe2ff" />
       <directionalLight position={[0, 30, -90]} intensity={0.5} color="#dfe8ff" />
 
+      {/* Outstanding Sky */}
+      <Sky
+        sunPosition={sunVec}
+        turbidity={0.8}
+        rayleigh={0.5}
+        mieCoefficient={0.005}
+        mieDirectionalG={0.8}
+      />
+      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+      
       {/* Rain */}
       <points ref={rain} geometry={rainGeo} visible={false}>
         <pointsMaterial color="#afc6d6" size={0.18} transparent opacity={0.6} />
