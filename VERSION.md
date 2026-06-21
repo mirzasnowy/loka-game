@@ -1,6 +1,6 @@
 # Versioning Rule
 
-Current version: **1.2.2**
+Current version: **1.2.3**
 
 ## Scheme: `MAJOR.MINOR.PATCH`
 
@@ -19,6 +19,11 @@ stable and we deliberately cut a milestone.
 3. Push `main` → Cloudflare Pages auto-redeploys to https://loka.mirzakur.xyz
 
 ## History
+- 1.2.3 — vehicle crash effects (inelastic jolt, sparks, camera shake), vehicles run
+  over & kill pedestrians, rear-end braking (no more driving through cars), kill counter
+  (warga/preman) in HUD, money drops from kills you can walk over to collect, proper
+  sit-on-chair (pinned to seat + knee-jointed sit pose, analog disabled), animated
+  seated rider on motorcycles/cars, FPS pistol one-handed with snappy recoil.
 - 1.2.2 — fixed floating vehicles (traffic body height + drivable collider offset),
   precise crosshair raycast shooting (no more random kills), FPS pistol aimed forward,
   robust HUD (smaller minimap + one low fixed action row, no minimap overlap).

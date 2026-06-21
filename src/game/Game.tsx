@@ -19,6 +19,7 @@ import PlayerVehicles from "@/systems/PlayerVehicles";
 import Vendors from "@/systems/Vendors";
 import CombatSystem from "@/systems/CombatSystem";
 import GunSystem from "@/systems/GunSystem";
+import EffectsSystem from "@/systems/EffectsSystem";
 import QuestSystem from "@/systems/QuestSystem";
 import InteractionSystem from "@/systems/InteractionSystem";
 import HUD from "./HUD";
@@ -66,6 +67,7 @@ export default function Game() {
           <TrafficSystem />
           <Vendors />
           <GunSystem />
+          <EffectsSystem />
           <FPViewModel />
           <QuestSystem />
           <InteractionSystem />

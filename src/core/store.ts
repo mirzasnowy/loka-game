@@ -79,6 +79,7 @@ interface GameState {
   // combat
   inCombat: boolean;
   enemiesAlive: number;
+  kills: { warga: number; preman: number };
 
   // inventory + weapons
   inventory: InvItem[];
@@ -120,6 +121,7 @@ interface GameState {
   setActiveQuest: (id: string | null) => void;
 
   setCombat: (inCombat: boolean, enemiesAlive: number) => void;
+  addKill: (kind: "warga" | "preman") => void;
 
   addItem: (item: InvItem) => void;
   removeItem: (id: string, qty?: number) => void;
@@ -187,6 +189,7 @@ export const useGame = create<GameState>((set, get) => ({
 
   inCombat: false,
   enemiesAlive: 0,
+  kills: { warga: 0, preman: 0 },
 
   inventory: [
     { id: "pistol", name: "Pistol", icon: "🔫", qty: 1, kind: "weapon" },
@@ -308,6 +311,8 @@ export const useGame = create<GameState>((set, get) => ({
   setActiveQuest: (activeQuestId) => set({ activeQuestId }),
 
   setCombat: (inCombat, enemiesAlive) => set({ inCombat, enemiesAlive }),
+
+  addKill: (kind) => set((s) => ({ kills: { ...s.kills, [kind]: s.kills[kind] + 1 } })),
 
   addItem: (item) =>
     set((s) => {

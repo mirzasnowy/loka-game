@@ -54,6 +54,7 @@ export default function HUD() {
 
 function Stats() {
   const p = useGame((s) => s.player);
+  const kills = useGame((s) => s.kills);
   return (
     <div style={{ position: "absolute", top: c(ST, 10), left: c(SL, 12), fontSize: 12, background: CARD, backdropFilter: "blur(8px)", padding: "9px 11px", borderRadius: 12, border: BORDER, minWidth: 148, zIndex: 30 }}>
       <Bar label="❤️" value={p.health} max={p.maxHealth} color="#ff5b54" />
@@ -61,6 +62,10 @@ function Stats() {
       <div style={{ marginTop: 7, display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <span style={{ fontWeight: 800, color: "#ffe082" }}>Rp {p.money.toLocaleString("id-ID")}</span>
         <span style={{ fontSize: 11, opacity: 0.8 }}>Lv {p.level}</span>
+      </div>
+      <div style={{ marginTop: 4, fontSize: 11, opacity: 0.85, display: "flex", gap: 10 }}>
+        <span>💀 Preman {kills.preman}</span>
+        <span>🧍 Warga {kills.warga}</span>
       </div>
     </div>
   );

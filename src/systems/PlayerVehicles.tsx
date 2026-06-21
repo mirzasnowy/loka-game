@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { RigidBody, CuboidCollider, type RapierRigidBody } from "@react-three/rapier";
 import { Asset } from "@/core/assetRegistry";
+import PlayerModel from "@/player/PlayerModel";
 import { getVehicle, type VehicleSpec } from "@/data/vehicles";
 import { DRIVABLE_PLACEMENTS } from "@/data/drivables";
 import { drivables } from "./registries";
@@ -43,8 +44,9 @@ function VehicleEntity({ uid, spec, pos }: { uid: string; spec: VehicleSpec; pos
       <CuboidCollider args={h} position={[0, h[1], 0]} />
       <Asset id={spec.assetId} />
       {driving && (
-        <group position={[0, spec.seatHeight, spec.kind === "scooter" ? 0 : -0.2]}>
-          <Asset id="player" />
+        // Animated rider in the seated/riding pose (avatar.ridingMode drives it).
+        <group position={[0, spec.seatHeight - 0.62, spec.kind === "scooter" ? -0.05 : -0.25]}>
+          <PlayerModel />
         </group>
       )}
     </RigidBody>

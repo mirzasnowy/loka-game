@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Group, Mesh, Vector3, MeshBasicMaterial, MathUtils } from "three";
-import { useGame } from "@/core/store";
+import { useGame, npcPositions } from "@/core/store";
 import { input } from "@/core/input";
 import { enemies, type EnemyEntry } from "./registries";
 import { avatar } from "@/player/avatarState";
 import { combat, COMBO_MOVES } from "./combatState";
 import { hitNpcNear } from "./npcState";
+import { dropMoney } from "./effects";
 
 /**
  * Arkham-lite melee. Enemies (preman) aggro, close in and strike on a cooldown;
@@ -291,6 +292,8 @@ export default function CombatSystem() {
           target.dead = true; target.diedAt = now;
           addExp(40);
           report("defeat", { target: "preman" });
+          st.addKill("preman");
+          dropMoney(target.pos[0], target.pos[2], 6000 + ((Math.random() * 10000) | 0));
         }
       } else {
         // 2) try an ordinary pedestrian → they flee and can die
@@ -299,7 +302,10 @@ export default function CombatSystem() {
           combo.current.count = now < combo.current.until ? combo.current.count + 1 : 1;
           combo.current.until = now + 1400;
           landed = true;
-          if (res.killed) { addExp(15); notify("Warga tewas 💀"); }
+          if (res.killed) {
+            addExp(15); notify("Warga tewas 💀"); st.addKill("warga");
+            dropMoney(npcPositions[res.idx * 2], npcPositions[res.idx * 2 + 1], 2000 + ((Math.random() * 6000) | 0));
+          }
         }
       }
 

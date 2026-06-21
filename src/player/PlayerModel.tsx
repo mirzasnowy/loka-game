@@ -32,6 +32,8 @@ export default function PlayerModel() {
   const foreR = useRef<Group>(null!);
   const legL  = useRef<Group>(null!);
   const legR  = useRef<Group>(null!);
+  const shinL = useRef<Group>(null!);
+  const shinR = useRef<Group>(null!);
   const gunG  = useRef<Group>(null!);
   const muzzle= useRef<Group>(null!);
   const phase = useRef(0);
@@ -50,7 +52,9 @@ export default function PlayerModel() {
     // ── target pose (radians). shoulder.x<0 = arm forward; elbow.x<0 = bent up/fwd ──
     let LSx = -sw * 0.8, LSz = 0.12, LSy = 0, LE = -0.18;   // left shoulder + elbow
     let RSx = sw * 0.8,  RSz = -0.12, RSy = 0, RE = -0.18;  // right shoulder + elbow
-    let LLx = sw, LLz = 0, RLx = -sw, RLz = 0;              // legs
+    let LLx = sw, LLz = 0, RLx = -sw, RLz = 0;              // legs (hip)
+    let kneeL = 0.12, kneeR = 0.12;                         // knees (bend>0)
+    if (moving) { kneeL = 0.2 + Math.max(0, -sw) * 0.7; kneeR = 0.2 + Math.max(0, sw) * 0.7; }
     let bodyY = 0;        // torso twist
     let bodyPitch = 0;    // lean into / out of a punch
     let headTurn = 0, headTuck = 0; // head follows the punch like a boxer
@@ -62,6 +66,7 @@ export default function PlayerModel() {
     if (jt >= 0 && jt < 1) {
       const k = Math.sin(jt * Math.PI);
       LLx = lerp(LLx, -0.9, k); RLx = lerp(RLx, -0.7, k);
+      kneeL = lerp(kneeL, 0.9, k); kneeR = lerp(kneeR, 0.9, k);
       LSx = lerp(LSx, -1.5, k); RSx = lerp(RSx, -1.5, k); LE = lerp(LE, -1.2, k); RE = lerp(RE, -1.2, k);
     }
 
@@ -122,11 +127,27 @@ export default function PlayerModel() {
       if (muzzle.current) muzzle.current.visible = ft >= 0 && ft < 0.45;
     } else if (muzzle.current) muzzle.current.visible = false;
 
-    // MOTORCYCLE riding pose
+    // MOTORCYCLE riding pose — thighs forward + splayed, knees bent onto pegs,
+    // hands forward on the bars, torso leaned in.
     if (avatar.ridingMode === "moto") {
-      LLx = -1.2; RLx = -1.2; LLz = 0.2; RLz = -0.2;
-      LSx = -1.0; RSx = -1.0; LE = -0.7; RE = -0.7;
-      leanT = 0.25;
+      LLx = -1.15; RLx = -1.15; LLz = 0.28; RLz = -0.28;
+      kneeL = 1.0; kneeR = 1.0;
+      LSx = -1.05; RSx = -1.05; LSz = 0.18; RSz = -0.18; LE = -0.55; RE = -0.55;
+      leanT = 0.28;
+      bodyY = 0;
+    } else if (avatar.ridingMode === "car") {
+      // seated in a car: thighs forward, hands on the wheel
+      LLx = -1.3; RLx = -1.3; kneeL = 1.1; kneeR = 1.1;
+      LSx = -1.0; RSx = -1.0; LE = -0.8; RE = -0.8;
+    }
+
+    // SITTING on a chair — thighs horizontal, knees down (feet on floor), hands on lap
+    const sitTransition = avatar.sitting;
+    if (sitTransition) {
+      LLx = -1.55; RLx = -1.55; LLz = 0.08; RLz = -0.08;
+      kneeL = 1.6; kneeR = 1.6;
+      LSx = -0.35; RSx = -0.35; LSz = 0.15; RSz = -0.15; LE = -0.5; RE = -0.5;
+      leanT = 0.0; bodyY = 0;
     }
 
     // ── smooth toward targets ──
@@ -138,6 +159,8 @@ export default function PlayerModel() {
     foreR.current.rotation.x = lerp(foreR.current.rotation.x, RE, sm);
     legL.current.rotation.set(lerp(legL.current.rotation.x, LLx, sm), 0, lerp(legL.current.rotation.z, LLz, sm));
     legR.current.rotation.set(lerp(legR.current.rotation.x, RLx, sm), 0, lerp(legR.current.rotation.z, RLz, sm));
+    shinL.current.rotation.x = lerp(shinL.current.rotation.x, kneeL, sm);
+    shinR.current.rotation.x = lerp(shinR.current.rotation.x, kneeR, sm);
     bodyG.current.rotation.y = lerp(bodyG.current.rotation.y, bodyY, sm);
     bodyG.current.rotation.x = lerp(bodyG.current.rotation.x, lean.current + bodyPitch, sm);
     bodyG.current.position.y = idleBob;
@@ -158,13 +181,8 @@ export default function PlayerModel() {
       rootG.current.position.y = 0;
     } else {
       rootG.current.rotation.x = lerp(rootG.current.rotation.x, 0, sm);
-      if (avatar.sitting) {
-        legL.current.rotation.x = lerp(legL.current.rotation.x, -1.45, sm);
-        legR.current.rotation.x = lerp(legR.current.rotation.x, -1.45, sm);
-        rootG.current.position.y = lerp(rootG.current.position.y, -0.35, sm);
-      } else {
-        rootG.current.position.y = lerp(rootG.current.position.y, 0, sm);
-      }
+      // sitting lowers the whole body so the hips meet the seat (legs already posed)
+      rootG.current.position.y = lerp(rootG.current.position.y, avatar.sitting ? -0.28 : 0, sm);
     }
   });
 
@@ -214,14 +232,20 @@ export default function PlayerModel() {
         </group>
       </group>
 
-      {/* Legs */}
+      {/* Legs: hip → thigh → knee → shin + shoe */}
       <group ref={legL} position={[-0.12, 0.74, 0]}>
-        <mesh position={[0, -0.26, 0]} castShadow><boxGeometry args={[0.18, 0.52, 0.22]} /><meshLambertMaterial color={PANTS} /></mesh>
-        <mesh position={[0, -0.60, 0.06]}><boxGeometry args={[0.17, 0.13, 0.34]} /><meshLambertMaterial color={SHOE} /></mesh>
+        <mesh position={[0, -0.16, 0]} castShadow><boxGeometry args={[0.18, 0.34, 0.22]} /><meshLambertMaterial color={PANTS} /></mesh>
+        <group ref={shinL} position={[0, -0.34, 0]}>
+          <mesh position={[0, -0.16, 0]} castShadow><boxGeometry args={[0.16, 0.32, 0.2]} /><meshLambertMaterial color={PANTS} /></mesh>
+          <mesh position={[0, -0.34, 0.06]}><boxGeometry args={[0.17, 0.13, 0.34]} /><meshLambertMaterial color={SHOE} /></mesh>
+        </group>
       </group>
       <group ref={legR} position={[0.12, 0.74, 0]}>
-        <mesh position={[0, -0.26, 0]} castShadow><boxGeometry args={[0.18, 0.52, 0.22]} /><meshLambertMaterial color={PANTS} /></mesh>
-        <mesh position={[0, -0.60, 0.06]}><boxGeometry args={[0.17, 0.13, 0.34]} /><meshLambertMaterial color={SHOE} /></mesh>
+        <mesh position={[0, -0.16, 0]} castShadow><boxGeometry args={[0.18, 0.34, 0.22]} /><meshLambertMaterial color={PANTS} /></mesh>
+        <group ref={shinR} position={[0, -0.34, 0]}>
+          <mesh position={[0, -0.16, 0]} castShadow><boxGeometry args={[0.16, 0.32, 0.2]} /><meshLambertMaterial color={PANTS} /></mesh>
+          <mesh position={[0, -0.34, 0.06]}><boxGeometry args={[0.17, 0.13, 0.34]} /><meshLambertMaterial color={SHOE} /></mesh>
+        </group>
       </group>
     </group>
   );

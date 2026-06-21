@@ -10,6 +10,7 @@ import { view } from "@/core/view";
 import { drivables } from "@/systems/registries";
 import PlayerModel from "./PlayerModel";
 import { avatar, KNOCKDOWN_MS } from "./avatarState";
+import { fx } from "@/systems/effects";
 
 /**
  * Single control + camera authority. On foot it drives the capsule rigidbody;
@@ -104,8 +105,7 @@ export default function Player() {
     const v = b.linvel();
     const p = b.translation();
 
-    // Stand up if you try to move while sitting.
-    if (avatar.sitting && moving) avatar.sitting = false;
+    // Sitting: analog disabled, body pinned to the seat (stand up via Aksi only).
     const downed = avatar.knockdownAt > 0 && performance.now() - avatar.knockdownAt < KNOCKDOWN_MS;
     const frozen = downed || avatar.sitting;
 
@@ -114,8 +114,14 @@ export default function Player() {
     if (knocked) {
       b.setLinvel({ x: avatar.knockX, y: 3.5, z: avatar.knockZ }, true);
       avatar.knockAt = 0;
+    } else if (avatar.sitting) {
+      // pin onto the chair seat, facing the way the seat looks (rig does the sit pose)
+      b.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      b.setTranslation({ x: avatar.seatX, y: p.y, z: avatar.seatZ }, true);
+      faceYaw.current = avatar.seatYaw;
+      if (visual.current) visual.current.rotation.y = faceYaw.current;
     } else if (frozen) {
-      b.setLinvel({ x: 0, y: v.y, z: 0 }, true); // can't move while down/sitting
+      b.setLinvel({ x: 0, y: v.y, z: 0 }, true); // can't move while down
     } else {
       b.setLinvel({ x: moveDir.x * speed, y: v.y, z: moveDir.z * speed }, true);
     }
@@ -168,10 +174,12 @@ export default function Player() {
     // Facing: aim along the camera when armed or in FPS; otherwise face movement.
     const camYaw = yaw.current + Math.PI; // character looks away from the camera
     const armed = st.equipped === "pistol";
-    if (view.mode === "fps" || armed) {
-      faceYaw.current = camYaw;
-    } else if (moving) {
-      faceYaw.current = MathUtils.lerp(faceYaw.current, Math.atan2(moveDir.x, moveDir.z), 0.25);
+    if (!avatar.sitting) {
+      if (view.mode === "fps" || armed) {
+        faceYaw.current = camYaw;
+      } else if (moving) {
+        faceYaw.current = MathUtils.lerp(faceYaw.current, Math.atan2(moveDir.x, moveDir.z), 0.25);
+      }
     }
     if (visual.current) {
       visual.current.rotation.y = faceYaw.current;
@@ -205,6 +213,15 @@ export default function Player() {
       camera.position.lerp(camWanted, 0.16);
       camera.lookAt(camTarget.set(p.x, p.y + 1.5, p.z));
     }
+
+    // Camera shake from crashes/impacts (smooth decay).
+    if (fx.shake > 0.001) {
+      const s = fx.shake;
+      camera.position.x += (Math.random() - 0.5) * s * 0.5;
+      camera.position.y += (Math.random() - 0.5) * s * 0.5;
+      camera.position.z += (Math.random() - 0.5) * s * 0.5;
+      fx.shake = Math.max(0, fx.shake - delta * 3);
+    }
   });
 
   return (
@@ -235,6 +252,8 @@ function this_driveVehicle(
   if (!entry) return;
   const { body, spec } = entry;
   avatar.ridingMode = spec.kind === "scooter" ? "moto" : "car";
+  avatar.speed = 0;       // rider sits, no walk cycle
+  avatar.weapon = "fists"; // no gun while riding
 
   // Current yaw of the vehicle.
   const rot = body.rotation();

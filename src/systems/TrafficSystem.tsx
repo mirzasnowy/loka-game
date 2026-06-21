@@ -7,6 +7,9 @@ import { useGame, MAX_NPCS, npcPositions } from "@/core/store";
 import { BLOCK, ROAD_LINES, lanePoint, inPark, PARK_RADIUS, MAP } from "@/world/grid";
 import { traffic, GREEN_TIME, YELLOW_TIME } from "./trafficState";
 import { avatar } from "@/player/avatarState";
+import { addShake, addSpark, dropMoney } from "./effects";
+import { damageNpc } from "./npcState";
+import { drivables } from "./registries";
 
 const MAX = 38;
 const DESPAWN = 170;
@@ -115,30 +118,60 @@ export default function TrafficSystem() {
         const distAhead = (nextInter - v.along) * v.dir;
         if (distAhead > 0 && distAhead < STOP_DIST) targetSpeed = 0;
       }
-      
-      // brake for pedestrians (NPCs) ahead
+
+      // rear-end avoidance: brake for the nearest vehicle ahead in the same lane
+      // (so cars never drive through each other).
       if (targetSpeed > 0) {
+        for (let j = 0; j < MAX; j++) {
+          if (j === i) continue;
+          const o = vehicles[j];
+          if (o.axis !== v.axis || o.dir !== v.dir || Math.abs(o.line - v.line) > 1.5) continue;
+          const gap = (o.along - v.along) * v.dir; // ahead distance
+          if (gap > 0 && gap < 7) { targetSpeed = gap < 4 ? 0 : v.speed * 0.4; break; }
+        }
+      }
+
+      // brake for — or run over — pedestrians ahead
+      {
         const lp = lanePoint(v.axis, v.line, v.dir, v.along);
+        const fwdX = Math.sin(lp.rotY), fwdZ = Math.cos(lp.rotY);
         for (let j = 0; j < MAX_NPCS; j++) {
           const nx = npcPositions[j * 2];
           const nz = npcPositions[j * 2 + 1];
           if (nx > 90000) continue;
-          
-          // is NPC near the vehicle?
-          const dx = nx - lp.x;
-          const dz = nz - lp.z;
+          const dx = nx - lp.x, dz = nz - lp.z;
           const distSq = dx * dx + dz * dz;
-          
-          if (distSq < 36) { // within 6 meters radius
-            // check if they are in front
-            const fwdX = Math.sin(lp.rotY);
-            const fwdZ = Math.cos(lp.rotY);
-            const dot = dx * fwdX + dz * fwdZ;
-            
-            if (dot > 0 && dot < 8 && distSq - dot*dot < 6) { // in front up to 8m, lateral < 2.4m
-              targetSpeed = 0;
-              break;
+          // run over: very close + moving fast → kill the pedestrian
+          if (distSq < 2.0 && v.cur > 3.5) {
+            if (damageNpc(j, 999)) {
+              st.addKill("warga");
+              dropMoney(nx, nz, 2000 + ((Math.random() * 5000) | 0));
+              addSpark(nx, 0.8, nz); addShake(0.25);
+              st.notify("Warga tertabrak! 🚗");
             }
+            continue;
+          }
+          if (distSq < 36 && targetSpeed > 0) {
+            const dot = dx * fwdX + dz * fwdZ;
+            if (dot > 0 && dot < 8 && distSq - dot * dot < 6) { targetSpeed = 0; }
+          }
+        }
+      }
+
+      // player ramming traffic while driving → crash feedback
+      if (st.runtime.inVehicleId && hitCd.current <= 0) {
+        const drv = drivables.get(st.runtime.inVehicleId);
+        if (drv) {
+          const t = drv.body.translation();
+          const lp = lanePoint(v.axis, v.line, v.dir, v.along);
+          if (Math.hypot(t.x - lp.x, t.z - lp.z) < 2.8) {
+            const lv = drv.body.linvel();
+            drv.body.setLinvel({ x: lv.x * -0.25, y: lv.y, z: lv.z * -0.25 }, true); // inelastic jolt
+            addShake(0.7); addSpark(lp.x, 0.9, lp.z);
+            avatar.hurtAt = performance.now();
+            hitCd.current = 0.8;
+            st.notify("BRAK! 💥");
+            spawnVeh(v, px, pz); // the other car is knocked out of the way
           }
         }
       }

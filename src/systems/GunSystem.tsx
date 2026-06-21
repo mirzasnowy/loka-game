@@ -8,6 +8,7 @@ import { input } from "@/core/input";
 import { enemies, type EnemyEntry } from "./registries";
 import { avatar } from "@/player/avatarState";
 import { npcDead, damageNpc } from "./npcState";
+import { dropMoney } from "./effects";
 
 /**
  * Pistol shooting — a PRECISE ray straight through the crosshair (camera forward).
@@ -90,11 +91,18 @@ export default function GunSystem() {
             hit.set(e.pos[0], 1.1, e.pos[2]);
             e.hp -= DMG; e.hitAt = now;
             st.triggerHitMarker();
-            if (e.hp <= 0 && !e.dead) { e.dead = true; e.diedAt = now; st.addExp(45); st.reportEvent("defeat", { target: "preman" }); st.notify("Preman tertembak! 🎯"); }
+            if (e.hp <= 0 && !e.dead) {
+              e.dead = true; e.diedAt = now; st.addExp(45); st.reportEvent("defeat", { target: "preman" });
+              st.notify("Preman tertembak! 🎯"); st.addKill("preman");
+              dropMoney(e.pos[0], e.pos[2], 6000 + ((Math.random() * 10000) | 0));
+            }
           } else if (bestNpc >= 0) {
             hit.set(npcPositions[bestNpc * 2], 1.1, npcPositions[bestNpc * 2 + 1]);
             st.triggerHitMarker();
-            if (damageNpc(bestNpc, DMG)) { st.addExp(15); st.notify("Warga tertembak 💀"); }
+            if (damageNpc(bestNpc, DMG)) {
+              st.addExp(15); st.notify("Warga tertembak 💀"); st.addKill("warga");
+              dropMoney(npcPositions[bestNpc * 2], npcPositions[bestNpc * 2 + 1], 2000 + ((Math.random() * 6000) | 0));
+            }
           } else {
             // clean miss — tracer flies to max range
             hit.set(ox + dir.x * RANGE, oy + dir.y * RANGE, oz + dir.z * RANGE);

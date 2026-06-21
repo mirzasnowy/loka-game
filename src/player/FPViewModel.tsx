@@ -51,12 +51,12 @@ export default function FPViewModel() {
     let rx = 0.22 + sway, ry = -0.30 + bob, rz = -0.55, rrot = -0.25;
     let lx = -0.26 + sway, ly = -0.34 + bob, lz = -0.58, lrot = -0.18;
 
-    // Pistol: both hands bring the gun to the centre, barrel level & pointing at
-    // the crosshair (ready-to-fire).
+    // Pistol: ONE hand (right) brings the gun to the centre, barrel level &
+    // pointing at the crosshair (ready-to-fire). Left hand is hidden.
     if (armed) {
-      rx = 0.07; ry = -0.16 + bob * 0.5; rz = -0.5; rrot = -0.02;
-      lx = -0.05; ly = -0.20 + bob * 0.5; lz = -0.52; lrot = -0.05;
+      rx = 0.10; ry = -0.16 + bob * 0.5; rz = -0.52; rrot = -0.02;
     }
+    if (lArm.current) lArm.current.visible = !armed;
 
     // PUNCH — alternate hand by combo move; lunge it forward
     const pt = (now - avatar.punchAt) / 230;
@@ -67,11 +67,14 @@ export default function FPViewModel() {
       else { lz -= 0.42 * k; ly += 0.12 * k; lrot -= 0.5 * k; }
     }
 
-    // FIRE — recoil + muzzle flash
+    // FIRE — snappy recoil (kick back + muzzle rise) + muzzle flash
     if (armed) {
-      const ft = (now - avatar.fireAt) / 120;
-      if (ft >= 0 && ft < 1) { const k = Math.sin(ft * Math.PI); rz += 0.1 * k; ry += 0.04 * k; rrot += 0.3 * k; }
-      if (muzzle.current) muzzle.current.visible = ft >= 0 && ft < 0.4;
+      const ft = (now - avatar.fireAt) / 130;
+      if (ft >= 0 && ft < 1) {
+        const k = Math.pow(1 - ft, 2); // fast snap, quick recovery
+        rz += 0.16 * k; ry += 0.06 * k; rrot += 0.45 * k;
+      }
+      if (muzzle.current) muzzle.current.visible = ft >= 0 && ft < 0.35;
     } else if (muzzle.current) muzzle.current.visible = false;
 
     const sm = 1 - Math.exp(-22 * delta);

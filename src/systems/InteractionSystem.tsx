@@ -41,7 +41,7 @@ export default function InteractionSystem() {
     if (avatar.sitting) {
       const target: InteractTarget = { id: "seat", kind: "poi", label: "Berdiri (E)", pos: [px, 0, pz] };
       if (st.interact?.label !== target.label) setInteract(target);
-      if (input.consume("interact")) avatar.sitting = false;
+      if (input.consume("interact")) { avatar.sitting = false; avatar.standAt = performance.now(); }
       return;
     }
 
@@ -126,7 +126,12 @@ export default function InteractionSystem() {
           g.notify("Uang tidak cukup!");
         }
       } else if (target.kind === "poi") {
+        // sit ON the bench: pin the seat transform, face the monument
+        const [sx, , sz] = target.pos;
         avatar.sitting = true;
+        avatar.sitAt = performance.now();
+        avatar.seatX = sx; avatar.seatY = 0.5; avatar.seatZ = sz;
+        avatar.seatYaw = Math.atan2(-sx, -sz);
         g.notify("Duduk 🪑");
       } else if (target.kind === "vendor") {
         const v = VENDORS.find((x) => x.id === target.id)!;
