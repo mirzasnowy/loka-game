@@ -174,7 +174,7 @@ function this_driveVehicle(
   const entry = drivables.get(uid);
   if (!entry) return;
   const { body, spec } = entry;
-  avatar.ridingMode = spec.kind === "moto" ? "moto" : "car";
+  avatar.ridingMode = spec.kind === "scooter" ? "moto" : "car";
 
   // Current yaw of the vehicle.
   const rot = body.rotation();
