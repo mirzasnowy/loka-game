@@ -430,73 +430,75 @@ function Bus(props: PlaceholderProps) {
 // ─── Street-food carts (kaki lima) — distinct per dagangan ───────────────────
 function makeCart(canopy: string, sign: string, bowl: string) {
   return function Cart(props: PlaceholderProps) {
+    // Front of the cart (counter/glass/sign) faces +Z toward the customer.
     return (
       <group {...props}>
-        {/* Glass display box (gerobak) */}
-        <mesh position={[0, 0.78, 0]} castShadow>
-          <boxGeometry args={[1.8, 0.7, 0.85]} />
+        {/* ── Wooden body ── */}
+        <mesh position={[0, 0.74, 0]} castShadow receiveShadow>
+          <boxGeometry args={[1.9, 0.66, 0.9]} />
           <meshLambertMaterial color="#9c6b3f" />
         </mesh>
-        {/* Glass upper case */}
-        <mesh position={[0, 1.28, 0]}>
-          <boxGeometry args={[1.7, 0.42, 0.78]} />
-          <meshLambertMaterial color="#bfe6f4" transparent opacity={0.55} />
-        </mesh>
-        {/* Glass frame */}
-        <mesh position={[0, 1.06, 0]}>
-          <boxGeometry args={[1.84, 0.06, 0.9]} />
-          <meshLambertMaterial color="#c87840" />
-        </mesh>
-        {/* Food bowls/pots on top */}
-        {[-0.5, 0, 0.5].map((x) => (
-          <mesh key={x} position={[x, 1.56, 0]}>
-            <cylinderGeometry args={[0.18, 0.16, 0.18, 10]} />
-            <meshLambertMaterial color={bowl} />
+        {/* lighter panel inlays */}
+        {[-0.55, 0, 0.55].map((x) => (
+          <mesh key={x} position={[x, 0.74, 0.46]}>
+            <boxGeometry args={[0.42, 0.46, 0.03]} />
+            <meshLambertMaterial color="#b07c48" />
           </mesh>
         ))}
-        {/* Steam puff */}
-        <mesh position={[0, 1.78, 0]}>
-          <sphereGeometry args={[0.16, 6, 5]} />
-          <meshLambertMaterial color="#ffffff" transparent opacity={0.4} />
+        {/* counter top */}
+        <mesh position={[0, 1.1, 0]} castShadow>
+          <boxGeometry args={[2.0, 0.08, 1.0]} />
+          <meshLambertMaterial color="#c89058" />
         </mesh>
-        {/* Posts */}
-        {[-0.8, 0.8].map((x) => (
-          <mesh key={x} position={[x, 2.0, 0]}>
-            <cylinderGeometry args={[0.04, 0.04, 1.5, 6]} />
-            <meshLambertMaterial color="#6a4020" />
-          </mesh>
+
+        {/* ── Glass display case (etalase) with frame ── */}
+        <mesh position={[0, 1.42, 0.02]}>
+          <boxGeometry args={[1.7, 0.5, 0.72]} />
+          <meshLambertMaterial color="#cfeefb" transparent opacity={0.45} />
+        </mesh>
+        {/* aluminium frame edges */}
+        {[-0.85, 0.85].map((x) => (
+          <mesh key={x} position={[x, 1.42, 0.02]}><boxGeometry args={[0.05, 0.52, 0.74]} /><meshLambertMaterial color="#d8d8de" /></mesh>
         ))}
-        {/* Tarpaulin canopy (terpal) */}
-        <mesh position={[0, 2.78, 0]} castShadow>
-          <boxGeometry args={[2.2, 0.12, 1.2]} />
-          <meshLambertMaterial color={canopy} />
-        </mesh>
-        {/* Scalloped canopy front */}
-        <mesh position={[0, 2.66, 0.62]}>
-          <boxGeometry args={[2.2, 0.22, 0.05]} />
-          <meshLambertMaterial color={canopy} />
-        </mesh>
-        {/* Signboard with accent color (stands for the dagangan name) */}
-        <mesh position={[0, 2.46, 0.66]}>
-          <boxGeometry args={[1.3, 0.32, 0.05]} />
-          <meshLambertMaterial color={sign} />
-        </mesh>
-        <mesh position={[0, 2.46, 0.69]}>
-          <boxGeometry args={[1.0, 0.16, 0.03]} />
-          <meshLambertMaterial color="#ffffff" />
-        </mesh>
-        {/* Wheels */}
-        {[-0.7, 0.7].map((x) => (
-          <mesh key={x} position={[x, 0.26, 0.46]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-            <cylinderGeometry args={[0.26, 0.26, 0.10, 12]} />
-            <meshLambertMaterial color="#444" />
-          </mesh>
+        <mesh position={[0, 1.68, 0.02]}><boxGeometry args={[1.74, 0.05, 0.76]} /><meshLambertMaterial color="#d8d8de" /></mesh>
+        {/* food trays inside the case */}
+        {[-0.5, 0, 0.5].map((x, i) => (
+          <mesh key={x} position={[x, 1.26, 0.02]}><boxGeometry args={[0.4, 0.14, 0.5]} /><meshLambertMaterial color={[bowl, "#d8c0a0", "#c0502a"][i]} /></mesh>
         ))}
-        {/* Handle */}
-        <mesh position={[1.0, 0.9, 0]} rotation={[0, 0, 0.5]}>
-          <cylinderGeometry args={[0.03, 0.03, 0.7, 6]} />
-          <meshLambertMaterial color="#5a3a20" />
-        </mesh>
+
+        {/* ── Stockpot (panci kuah) on the left with steam ── */}
+        <mesh position={[-0.66, 1.32, 0]} castShadow><cylinderGeometry args={[0.26, 0.24, 0.34, 14]} /><meshLambertMaterial color="#b8bcc4" /></mesh>
+        <mesh position={[-0.66, 1.5, 0]}><cylinderGeometry args={[0.28, 0.28, 0.05, 14]} /><meshLambertMaterial color="#9aa0aa" /></mesh>
+        <mesh position={[-0.66, 1.72, 0]}><sphereGeometry args={[0.15, 6, 5]} /><meshLambertMaterial color="#ffffff" transparent opacity={0.35} /></mesh>
+        <mesh position={[-0.62, 1.92, 0]}><sphereGeometry args={[0.12, 6, 5]} /><meshLambertMaterial color="#ffffff" transparent opacity={0.25} /></mesh>
+        {/* bowls stacked on the right */}
+        {[1.28, 1.4].map((y, i) => (
+          <mesh key={y} position={[0.66, y, 0]}><cylinderGeometry args={[0.16, 0.13, 0.08, 12]} /><meshLambertMaterial color={i ? "#f0f0f0" : "#e0e0e0"} /></mesh>
+        ))}
+
+        {/* ── Canopy (terpal) on 4 posts ── */}
+        {[[-0.85, 0.4], [0.85, 0.4], [-0.85, -0.4], [0.85, -0.4]].map(([x, z], i) => (
+          <mesh key={i} position={[x, 2.0, z]}><cylinderGeometry args={[0.035, 0.035, 1.6, 6]} /><meshLambertMaterial color="#6a4020" /></mesh>
+        ))}
+        <mesh position={[0, 2.84, 0]} castShadow><boxGeometry args={[2.3, 0.1, 1.35]} /><meshLambertMaterial color={canopy} /></mesh>
+        {/* scalloped valance (front + sides) */}
+        <mesh position={[0, 2.7, 0.68]}><boxGeometry args={[2.3, 0.2, 0.04]} /><meshLambertMaterial color={canopy} /></mesh>
+        <mesh position={[0, 2.7, 0.7]}><boxGeometry args={[2.3, 0.08, 0.02]} /><meshLambertMaterial color="#ffffff" /></mesh>
+
+        {/* ── Name signboard ── */}
+        <mesh position={[0, 2.5, 0.72]}><boxGeometry args={[1.5, 0.34, 0.05]} /><meshLambertMaterial color={sign} /></mesh>
+        <mesh position={[0, 2.5, 0.75]}><boxGeometry args={[1.2, 0.18, 0.03]} /><meshLambertMaterial color="#ffffff" /></mesh>
+
+        {/* ── Spoked wheels ── */}
+        {[-0.75, 0.75].map((x) => (
+          <group key={x} position={[x, 0.28, 0]}>
+            <mesh rotation={[0, 0, Math.PI / 2]} castShadow><cylinderGeometry args={[0.28, 0.28, 0.1, 14]} /><meshLambertMaterial color="#3a3a3a" /></mesh>
+            <mesh rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.1, 0.1, 0.12, 8]} /><meshLambertMaterial color="#b0b0b0" /></mesh>
+          </group>
+        ))}
+        {/* push handle */}
+        <mesh position={[1.06, 1.0, 0]} rotation={[0, 0, 0.4]}><cylinderGeometry args={[0.03, 0.03, 0.8, 6]} /><meshLambertMaterial color="#5a3a20" /></mesh>
+        <mesh position={[1.24, 1.2, 0]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.03, 0.03, 0.5, 6]} /><meshLambertMaterial color="#3a2614" /></mesh>
       </group>
     );
   };

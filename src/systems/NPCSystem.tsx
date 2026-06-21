@@ -250,22 +250,22 @@ export default function NPCSystem() {
   return (
     <>
       <instancedMesh ref={headRef} args={[headGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
-        <meshLambertMaterial vertexColors />
+        <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
       <instancedMesh ref={bodyRef} args={[bodyGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
-        <meshLambertMaterial vertexColors />
+        <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
       <instancedMesh ref={armLRef} args={[armGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
-        <meshLambertMaterial vertexColors />
+        <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
       <instancedMesh ref={armRRef} args={[armGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
-        <meshLambertMaterial vertexColors />
+        <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
       <instancedMesh ref={legLRef} args={[legGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
-        <meshLambertMaterial vertexColors />
+        <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
       <instancedMesh ref={legRRef} args={[legGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
-        <meshLambertMaterial vertexColors />
+        <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
       <instancedMesh ref={fxRef} args={[fxGeo, undefined, MAX_NPCS]} frustumCulled={false}>
         <meshBasicMaterial color="#ffcf3a" />

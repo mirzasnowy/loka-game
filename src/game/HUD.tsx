@@ -126,17 +126,12 @@ function TopRight(props: {
         {menuOpen ? "✕" : "☰"}
       </button>
       {menuOpen && (
-        <div style={{ position: "absolute", top: c(ST, 58), right: c(SR, 12), width: 210, background: "rgba(18,22,30,0.95)", border: BORDER, borderRadius: 14, padding: 10, pointerEvents: "auto", display: "flex", flexDirection: "column", gap: 7, boxShadow: "0 10px 30px rgba(0,0,0,0.4)" }}>
-          <div style={{ fontSize: 11, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.1em", padding: "2px 4px" }}>Menu</div>
+        <div style={{ position: "absolute", top: c(ST, 56), right: c(SR, 12), width: 188, maxHeight: "70vh", overflowY: "auto", background: "rgba(18,22,30,0.96)", border: BORDER, borderRadius: 12, padding: 8, pointerEvents: "auto", display: "flex", flexDirection: "column", gap: 6, boxShadow: "0 10px 30px rgba(0,0,0,0.45)" }}>
           <Item label="🗺️ Peta" on={mapOn} onClick={() => setMapOn(!mapOn)} />
-          <Item label="🕐 Jam & Cuaca" on={clockOn} onClick={() => setClockOn(!clockOn)} />
-          <Item label={`🎥 Kamera: ${view.mode.toUpperCase()}`} onClick={() => { view.mode = view.mode === "tps" ? "fps" : "tps"; force((n) => n + 1); }} />
-          <Item label="🔫 Ganti Senjata" onClick={() => useGame.getState().setEquipped(useGame.getState().equipped === "pistol" ? "fists" : "pistol")} />
-          <Item label="🎒 Inventaris" onClick={() => useGame.getState().toggleInventory(true)} />
+          <Item label="🕐 Jam" on={clockOn} onClick={() => setClockOn(!clockOn)} />
+          <Item label={`🎥 ${view.mode.toUpperCase()}`} onClick={() => { view.mode = view.mode === "tps" ? "fps" : "tps"; force((n) => n + 1); }} />
+          <Item label="🎒 Inventaris" onClick={() => { useGame.getState().toggleInventory(true); setMenuOpen(false); }} />
           <Item label="💫 Respawn" onClick={() => { useGame.getState().respawn(); setMenuOpen(false); }} />
-          <div style={{ fontSize: 10.5, opacity: 0.5, padding: "4px 4px 2px", lineHeight: 1.5 }}>
-            Gerak: joystick · Lihat: geser kanan · E: interaksi
-          </div>
         </div>
       )}
     </>
@@ -326,18 +321,14 @@ function MobileControls() {
       <LookPad />
       <Joystick />
 
-      {/* Primary actions (bottom-right, safe-inset) */}
-      <div style={{ position: "absolute", right: c(SR, 26), bottom: c(SB, 40), display: "flex", flexDirection: "column", alignItems: "center", gap: 12, pointerEvents: "auto" }}>
-        <ActBtn action="jump" label="Lompat" color="rgba(21,101,192,0.88)" small />
+      {/* One low horizontal action bar (bottom-right) — never reaches the minimap */}
+      <div style={{ position: "absolute", right: c(SR, 18), bottom: c(SB, 22), display: "flex", alignItems: "flex-end", gap: 12, pointerEvents: "auto" }}>
+        <ActBtn action="interact" label="Aksi" color="rgba(46,125,50,0.9)" small />
+        <ActBtn action="jump" label="Lompat" color="rgba(21,101,192,0.9)" small />
+        {equipped === "pistol" && <ActBtn action="reload" label="Isi" color="rgba(93,64,55,0.9)" small />}
         {equipped === "pistol"
           ? <ActBtn action="fire" label="Tembak" color="rgba(229,57,53,0.92)" big />
           : <ActBtn action="punch" label="Pukul" color="rgba(211,47,47,0.92)" big />}
-      </div>
-
-      {/* Context actions (just left of primary) */}
-      <div style={{ position: "absolute", right: c(SR, 116), bottom: c(SB, 40), display: "flex", flexDirection: "column", gap: 10, pointerEvents: "auto" }}>
-        <ActBtn action="interact" label="Aksi" color="rgba(46,125,50,0.9)" small />
-        {equipped === "pistol" && <ActBtn action="reload" label="Isi" color="rgba(93,64,55,0.9)" small />}
       </div>
     </>
   );

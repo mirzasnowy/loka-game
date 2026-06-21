@@ -475,58 +475,6 @@ function Minimarkets() {
   );
 }
 
-// ─── Gerobak (Street Vendors) ────────────────────────────────────────────────
-function Gerobaks() {
-  const positions = useMemo(() => {
-    const pts = [];
-    for (let i = 0; i < 40; i++) {
-       const ix = ROAD_LINES[Math.floor(Math.random() * ROAD_LINES.length)];
-       const iz = (Math.random() - 0.5) * 400;
-       if (inPark(ix, iz)) continue;
-       const side = Math.random() < 0.5 ? 1 : -1;
-       pts.push({ x: ix + side * SIDEWALK_OFF, z: iz, rot: Math.random() > 0.5 ? 0 : Math.PI/2 });
-    }
-    return pts;
-  }, []);
-
-  const baseRef = useRef<InstancedMesh>(null!);
-  const tarpRef = useRef<InstancedMesh>(null!);
-  const wheelRef = useRef<InstancedMesh>(null!);
-
-  useLayoutEffect(() => {
-    positions.forEach((p, i) => {
-      tmp.position.set(p.x, 0.8, p.z); tmp.rotation.set(0, p.rot, 0); tmp.scale.set(1.4, 0.8, 2.2); tmp.updateMatrix();
-      baseRef.current.setMatrixAt(i, tmp.matrix); baseRef.current.setColorAt(i, tmpColor.set("#8b5a2b"));
-
-      tmp.position.set(p.x, 2.1, p.z); tmp.scale.set(1.6, 0.1, 2.4); tmp.updateMatrix();
-      tarpRef.current.setMatrixAt(i, tmp.matrix); tarpRef.current.setColorAt(i, tmpColor.set(Math.random() > 0.5 ? "#2c82c9" : "#27ae60"));
-
-      for (let w = 0; w < 2; w++) {
-        tmp.position.set(p.x + (w===0?0.8:-0.8), 0.4, p.z); tmp.rotation.set(Math.PI/2, 0, 0); tmp.scale.set(0.4, 0.1, 0.4); tmp.updateMatrix();
-        wheelRef.current.setMatrixAt(i*2 + w, tmp.matrix); wheelRef.current.setColorAt(i*2 + w, tmpColor.set("#222222"));
-      }
-    });
-    [baseRef, tarpRef, wheelRef].forEach(r => {
-      r.current.instanceMatrix.needsUpdate = true;
-      if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true;
-    });
-  }, [positions]);
-
-  return (
-    <>
-      <instancedMesh ref={baseRef} args={[undefined, undefined, positions.length]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
-      </instancedMesh>
-      <instancedMesh ref={tarpRef} args={[undefined, undefined, positions.length]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
-      </instancedMesh>
-      <instancedMesh ref={wheelRef} args={[undefined, undefined, positions.length * 2]} castShadow>
-        <cylinderGeometry args={[1, 1, 1, 12]} /><meshLambertMaterial color="white" />
-      </instancedMesh>
-    </>
-  );
-}
-
 // ─── Traffic lights (synced to the shared signal phase) ──────────────────────
 const RED = new Color("#ff2a2a");
 const YEL = new Color("#ffd21a");
@@ -641,7 +589,6 @@ export default function World() {
       <MonasPark />
       <StreetProps />
       <Minimarkets />
-      <Gerobaks />
       <TrafficLights />
 
       {/* Monas solid colliders so the player stands on the base, never sinks in */}

@@ -55,19 +55,21 @@ function spawnVeh(v: Veh, px: number, pz: number) {
   v.speed = KINDS[v.kind].speed * (0.85 + Math.random() * 0.3);
   v.cur = v.speed;
   v.dir = Math.random() < 0.5 ? 1 : -1;
-  
-  // Try up to 10 times to find a spawn point outside the park
-  for (let tries = 0; tries < 10; tries++) {
-    v.axis = Math.random() < 0.5 ? "z" : "x";
-    const center = v.axis === "z" ? px : pz;
-    const cands = ROAD_LINES.filter((c) => Math.abs(c - center) < 110);
-    v.line = cands.length ? cands[(Math.random() * cands.length) | 0] : 0;
+  v.axis = Math.random() < 0.5 ? "z" : "x";
+
+  const center = v.axis === "z" ? px : pz;        // road line varies on the cross axis
+  const cands = ROAD_LINES.filter((c) => Math.abs(c - center) < 130 && Math.abs(c) >= PARK_RADIUS);
+  v.line = cands.length ? cands[(Math.random() * cands.length) | 0] : (center >= 0 ? 96 : -96);
+
+  // A line that runs through the park (|line| < PARK_RADIUS, i.e. the centre line)
+  // must keep its cars OUTSIDE the park and driving AWAY from it.
+  if (Math.abs(v.line) < PARK_RADIUS) {
+    const s = Math.random() < 0.5 ? 1 : -1;
+    v.along = s * (PARK_RADIUS + 30 + Math.random() * 150);
+    v.dir = (v.along > 0 ? 1 : -1);
+  } else {
     const alongCenter = v.axis === "z" ? pz : px;
     v.along = alongCenter + (Math.random() - 0.5) * 220;
-    
-    const sx = v.axis === "z" ? v.along : v.line;
-    const sz = v.axis === "z" ? v.line : v.along;
-    if (Math.hypot(sx, sz) >= PARK_RADIUS + 4) break;
   }
 }
 
@@ -147,13 +149,13 @@ export default function TrafficSystem() {
       const lp = lanePoint(v.axis, v.line, v.dir, v.along);
       const x = lp.x, z = lp.z, rotY = lp.rotY;
 
-      // recycle if far, off-map, or about to enter the park
+      // recycle if far, off-map, or anywhere inside the park (no oscillating).
       const tooFar = Math.hypot(x - px, z - pz) > DESPAWN;
       const offMap = Math.abs(v.along) > MAP - 6;
-      const intoPark = Math.hypot(x, z) < PARK_RADIUS + 4;
+      const intoPark = Math.hypot(x, z) < PARK_RADIUS + 6;
       if (tooFar || offMap || intoPark) {
-        if (intoPark && !tooFar && !offMap) v.dir = (v.dir * -1) as 1 | -1; // turn around at park edge
-        else { spawnVeh(v, px, pz);
+        {
+          spawnVeh(v, px, pz);
           bodyDummy.position.set(0, HIDE, 0); bodyDummy.scale.setScalar(0.001); bodyDummy.updateMatrix();
           bodyRef.current.setMatrixAt(i, bodyDummy.matrix);
           cabRef.current.setMatrixAt(i, bodyDummy.matrix);

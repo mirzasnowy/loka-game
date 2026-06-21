@@ -5,8 +5,8 @@ import { VENDOR_PLACEMENTS, VENDORS } from "@/data/vendors";
 import { nearestLine } from "@/world/grid";
 
 /**
- * Street-vendor carts + the penjual standing behind each one (facing the road).
- * Interaction/economy handled by InteractionSystem.
+ * Street-vendor carts + the penjual standing behind each one, both facing the
+ * road (where the player approaches). Buying is handled by InteractionSystem.
  */
 export default function Vendors() {
   return (
@@ -15,20 +15,17 @@ export default function Vendors() {
         const v = VENDORS.find((x) => x.id === p.vendorId);
         if (!v) return null;
         const [x, , z] = p.pos;
-        // Which axis is the road on? Put the seller on the building side, facing it.
+        // Unit vector from the cart toward the nearer road.
         const onX = Math.abs(x - nearestLine(x)) < Math.abs(z - nearestLine(z));
-        const roadX = onX ? nearestLine(x) : x;
-        const roadZ = onX ? z : nearestLine(z);
-        // seller stands ~1.1m on the far side of the cart from the road
-        const dirX = onX ? Math.sign(x - roadX) : 0;
-        const dirZ = onX ? 0 : Math.sign(z - roadZ);
-        const sx = x + dirX * 1.1;
-        const sz = z + dirZ * 1.1;
-        const yaw = onX ? (dirX > 0 ? Math.PI / 2 : -Math.PI / 2) : (dirZ > 0 ? 0 : Math.PI);
+        const rdx = onX ? Math.sign(nearestLine(x) - x) || 1 : 0;
+        const rdz = onX ? 0 : Math.sign(nearestLine(z) - z) || 1;
+        const yaw = Math.atan2(rdx, rdz);           // face the road
+        const sx = x - rdx * 1.15;                  // seller stands behind the cart
+        const sz = z - rdz * 1.15;
         return (
           <group key={i}>
-            <Asset id={v.assetId} position={p.pos} rotation={[0, yaw + Math.PI, 0]} />
-            <Asset id={v.sellerId} position={[sx, 0, sz]} rotation={[0, yaw + Math.PI, 0]} />
+            <Asset id={v.assetId} position={[x, 0, z]} rotation={[0, yaw, 0]} />
+            <Asset id={v.sellerId} position={[sx, 0, sz]} rotation={[0, yaw, 0]} />
           </group>
         );
       })}
