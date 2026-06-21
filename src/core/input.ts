@@ -7,7 +7,7 @@
  * consumed once so a tap fires exactly one action.
  */
 
-export type Action = "interact" | "punch" | "kick" | "dodge" | "jump" | "fire" | "reload" | "swap" | "inv";
+export type Action = "interact" | "punch" | "kick" | "dodge" | "jump" | "fire" | "reload" | "swap" | "inv" | "view";
 
 class InputState {
   move = { x: 0, y: 0 }; // x: strafe (-1..1), y: forward (-1..1)
@@ -39,10 +39,10 @@ class InputState {
     this.lookDy = 0;
     return d;
   }
-  /** Mobile look pad: accumulate a drag delta in pixels. */
+  /** Mobile look pad: accumulate a drag delta in pixels. Tuned for easy 360° pan. */
   addLook(dxPx: number, dyPx: number) {
-    this.lookDx += dxPx * 0.006;
-    this.lookDy += dyPx * 0.006;
+    this.lookDx += dxPx * 0.010;
+    this.lookDy += dyPx * 0.009;
   }
 
   bind() {
@@ -63,6 +63,7 @@ class InputState {
       if (e.code === "KeyF") this.press("fire");
       if (e.code === "KeyR") this.press("reload");
       if (e.code === "KeyQ") this.press("swap");
+      if (e.code === "KeyV") this.press("view");
       if (e.code === "KeyI" || e.code === "Tab") { e.preventDefault(); this.press("inv"); }
     };
     const up = (e: KeyboardEvent) => {
@@ -91,8 +92,8 @@ class InputState {
     });
     window.addEventListener("pointermove", (e) => {
       if (dragging) {
-        this.lookDx += (e.clientX - lastX) * 0.005;
-        this.lookDy += (e.clientY - lastY) * 0.005;
+        this.lookDx += (e.clientX - lastX) * 0.008;
+        this.lookDy += (e.clientY - lastY) * 0.007;
         lastX = e.clientX;
         lastY = e.clientY;
       }

@@ -63,6 +63,8 @@ export default function NPCSystem() {
   const headRef = useRef<InstancedMesh>(null!);
   const bodyRef = useRef<InstancedMesh>(null!);
   const legsRef = useRef<InstancedMesh>(null!);
+  const armLRef = useRef<InstancedMesh>(null!);
+  const armRRef = useRef<InstancedMesh>(null!);
 
   const agents = useMemo<Agent[]>(() => {
     const [px, , pz] = useGame.getState().runtime.pos;
@@ -85,8 +87,10 @@ export default function NPCSystem() {
       headRef.current.setColorAt(i, cSkin.set(skin));
       bodyRef.current.setColorAt(i, cShirt.set(shirt));
       legsRef.current.setColorAt(i, cPants.set(pants));
+      armLRef.current.setColorAt(i, cShirt.set(shirt));
+      armRRef.current.setColorAt(i, cShirt.set(shirt));
     });
-    [headRef, bodyRef, legsRef].forEach((r) => { if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true; });
+    [headRef, bodyRef, legsRef, armLRef, armRRef].forEach((r) => { if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true; });
   }, [agents]);
 
   useFrame((_, delta) => {
@@ -107,6 +111,8 @@ export default function NPCSystem() {
         headRef.current.setMatrixAt(i, dummy.matrix);
         bodyRef.current.setMatrixAt(i, dummy.matrix);
         legsRef.current.setMatrixAt(i, dummy.matrix);
+        armLRef.current.setMatrixAt(i, dummy.matrix);
+        armRRef.current.setMatrixAt(i, dummy.matrix);
         continue;
       }
 
@@ -175,16 +181,30 @@ export default function NPCSystem() {
       npcPositions[i * 2] = x;
       npcPositions[i * 2 + 1] = z;
 
-      // render 3 stacked boxes
+      // render stacked boxes: head, torso, legs
       dummy.position.set(x, 1.58 + bob, z); dummy.rotation.set(tilt, a.rot, 0); dummy.scale.set(0.38, 0.38, 0.36); dummy.updateMatrix();
       headRef.current.setMatrixAt(i, dummy.matrix);
       dummy.position.set(x, 1.1 + bob, z); dummy.scale.set(0.44, 0.6, 0.28); dummy.updateMatrix();
       bodyRef.current.setMatrixAt(i, dummy.matrix);
       dummy.position.set(x, 0.44 + bob * 0.5, z); dummy.scale.set(0.38, 0.52, 0.22); dummy.updateMatrix();
       legsRef.current.setMatrixAt(i, dummy.matrix);
+
+      // arms with walk swing (offsets in the NPC's local frame, rotated by a.rot)
+      const cs = Math.cos(a.rot), sn = Math.sin(a.rot);
+      const swing = stepping ? Math.sin(a.phase) * 0.18 : 0;
+      // left arm: localX -0.28, localZ +swing
+      let lx = -0.28, lz = swing;
+      dummy.position.set(x + lx * cs + lz * sn, 1.06 + bob, z - lx * sn + lz * cs);
+      dummy.rotation.set(0, a.rot, 0); dummy.scale.set(0.13, 0.46, 0.15); dummy.updateMatrix();
+      armLRef.current.setMatrixAt(i, dummy.matrix);
+      // right arm: localX +0.28, localZ -swing
+      lx = 0.28; lz = -swing;
+      dummy.position.set(x + lx * cs + lz * sn, 1.06 + bob, z - lx * sn + lz * cs);
+      dummy.rotation.set(0, a.rot, 0); dummy.scale.set(0.13, 0.46, 0.15); dummy.updateMatrix();
+      armRRef.current.setMatrixAt(i, dummy.matrix);
     }
 
-    [headRef, bodyRef, legsRef].forEach((r) => { r.current.instanceMatrix.needsUpdate = true; });
+    [headRef, bodyRef, legsRef, armLRef, armRRef].forEach((r) => { r.current.instanceMatrix.needsUpdate = true; });
   });
 
   return (
@@ -196,6 +216,12 @@ export default function NPCSystem() {
         <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
       </instancedMesh>
       <instancedMesh ref={legsRef} args={[undefined, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
+      </instancedMesh>
+      <instancedMesh ref={armLRef} args={[undefined, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
+      </instancedMesh>
+      <instancedMesh ref={armRRef} args={[undefined, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
       </instancedMesh>
     </>

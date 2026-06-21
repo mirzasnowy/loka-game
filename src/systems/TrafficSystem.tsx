@@ -5,6 +5,8 @@ import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D, Color, MathUtils } from "three";
 import { useGame, MAX_NPCS, npcPositions } from "@/core/store";
 import { BLOCK, ROAD_LINES, lanePoint, inPark, PARK_RADIUS, MAP } from "@/world/grid";
+import { traffic, GREEN_TIME, YELLOW_TIME } from "./trafficState";
+import { avatar } from "@/player/avatarState";
 
 const MAX = 38;
 const DESPAWN = 170;
@@ -36,9 +38,11 @@ interface Veh {
 
 const bodyDummy = new Object3D();
 const cabDummy  = new Object3D();
+const winDummy  = new Object3D();
 const whlDummy  = new Object3D();
 const bodyCol   = new Color();
 const cabCol    = new Color();
+const winCol    = new Color("#bfe6f4");
 const whlCol    = new Color("#2b2b2b");
 
 function spawnVeh(v: Veh, px: number, pz: number) {
@@ -66,8 +70,8 @@ export default function TrafficSystem() {
   const bodyRef = useRef<InstancedMesh>(null!);
   const cabRef  = useRef<InstancedMesh>(null!);
   const whlRef  = useRef<InstancedMesh>(null!);
-  const phase   = useRef(0);
-  const phaseTmr= useRef(8);
+  const winRef  = useRef<InstancedMesh>(null!);
+  const hitCd   = useRef(0);
 
   const vehicles = useMemo<Veh[]>(() => {
     const [px, , pz] = useGame.getState().runtime.pos;
@@ -83,14 +87,17 @@ export default function TrafficSystem() {
     if (st.paused) return;
     const [px, , pz] = st.runtime.pos;
     const HIDE = -3000;
+    hitCd.current -= delta;
 
-    phaseTmr.current -= delta;
-    if (phaseTmr.current <= 0) { phase.current = phase.current === 0 ? 1 : 0; phaseTmr.current = 8; }
+    // Shared traffic-signal phase (full green + yellow window).
+    traffic.timer -= delta;
+    if (traffic.timer <= 0) { traffic.phase = traffic.phase === 0 ? 1 : 0; traffic.timer = GREEN_TIME + YELLOW_TIME; }
+    const phase = traffic;
 
     for (let i = 0; i < MAX; i++) {
       const v = vehicles[i];
       const onZ = v.axis === "z";
-      const hasGreen = (phase.current === 0) === onZ;
+      const hasGreen = (phase.phase === 0) === onZ;
 
       // brake for red at next intersection (intersections at multiples of BLOCK)
       let targetSpeed = v.speed;
@@ -143,11 +150,28 @@ export default function TrafficSystem() {
           bodyDummy.position.set(0, HIDE, 0); bodyDummy.scale.setScalar(0.001); bodyDummy.updateMatrix();
           bodyRef.current.setMatrixAt(i, bodyDummy.matrix);
           cabRef.current.setMatrixAt(i, bodyDummy.matrix);
+          winRef.current.setMatrixAt(i, bodyDummy.matrix);
           for (let w = 0; w < 4; w++) { whlRef.current.setMatrixAt(i * 4 + w, bodyDummy.matrix); }
           bodyRef.current.setColorAt(i, bodyCol.set(KINDS[v.kind].body));
           cabRef.current.setColorAt(i, cabCol.set(KINDS[v.kind].cab));
+          winRef.current.setColorAt(i, winCol);
           for (let w = 0; w < 4; w++) whlRef.current.setColorAt(i * 4 + w, whlCol);
           continue;
+        }
+      }
+
+      // Run over the player on foot → damage + knockback + red flash.
+      if (!st.runtime.inVehicleId && hitCd.current <= 0 && v.cur > 3) {
+        const ddx = px - x, ddz = pz - z;
+        if (ddx * ddx + ddz * ddz < 3.2) {
+          st.damage(Math.min(45, 12 + v.cur * 2.2));
+          const now2 = performance.now();
+          avatar.hurtAt = now2;
+          avatar.knockX = Math.sin(rotY) * 10;
+          avatar.knockZ = Math.cos(rotY) * 10;
+          avatar.knockAt = now2;
+          hitCd.current = 1.3;
+          st.notify("Tertabrak kendaraan! 🚗💥");
         }
       }
 
@@ -164,16 +188,24 @@ export default function TrafficSystem() {
       bodyRef.current.setColorAt(i, bodyCol.set(k.body));
 
       if (!isMoto) {
+        const bus = k.l > 8;
         cabDummy.position.set(x, cabY, z);
         cabDummy.rotation.set(0, rotY, 0);
-        const bus = k.l > 8;
         cabDummy.scale.set(k.w * 0.9, k.h * (bus ? 0.95 : 0.72), k.l * (bus ? 0.96 : 0.52));
         cabDummy.updateMatrix();
+        // glass band slightly proud of the cabin → reads as windscreen + windows
+        winDummy.position.set(x, cabY + 0.02, z);
+        winDummy.rotation.set(0, rotY, 0);
+        winDummy.scale.set(k.w * 0.92, k.h * (bus ? 0.6 : 0.42), k.l * (bus ? 0.9 : 0.5));
+        winDummy.updateMatrix();
       } else {
         cabDummy.position.set(0, HIDE, 0); cabDummy.scale.setScalar(0.001); cabDummy.updateMatrix();
+        winDummy.position.set(0, HIDE, 0); winDummy.scale.setScalar(0.001); winDummy.updateMatrix();
       }
       cabRef.current.setMatrixAt(i, cabDummy.matrix);
       cabRef.current.setColorAt(i, cabCol.set(k.cab));
+      winRef.current.setMatrixAt(i, winDummy.matrix);
+      winRef.current.setColorAt(i, winCol);
 
       // wheels
       const wheelR = k.wheelR, halfW = k.w / 2;
@@ -193,7 +225,7 @@ export default function TrafficSystem() {
       }
     }
 
-    [bodyRef, cabRef].forEach((r) => {
+    [bodyRef, cabRef, winRef].forEach((r) => {
       r.current.instanceMatrix.needsUpdate = true;
       if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true;
     });
@@ -208,6 +240,9 @@ export default function TrafficSystem() {
       </instancedMesh>
       <instancedMesh ref={cabRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
         <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
+      </instancedMesh>
+      <instancedMesh ref={winRef} args={[undefined, undefined, MAX]} frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" transparent opacity={0.85} />
       </instancedMesh>
       <instancedMesh ref={whlRef} args={[undefined, undefined, WHEEL_COUNT]} castShadow frustumCulled={false}>
         <cylinderGeometry args={[1, 1, 0.2, 12]} /><meshLambertMaterial color="white" />

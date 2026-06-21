@@ -6,6 +6,7 @@ import { RigidBody, CapsuleCollider, useRapier, type RapierRigidBody } from "@re
 import { Vector3, Quaternion, Euler, MathUtils, Group } from "three";
 import { useGame } from "@/core/store";
 import { input } from "@/core/input";
+import { view } from "@/core/view";
 import { drivables } from "@/systems/registries";
 import PlayerModel from "./PlayerModel";
 import { avatar } from "./avatarState";
@@ -29,6 +30,7 @@ const camWanted = new Vector3();
 const q = new Quaternion();
 const e = new Euler();
 const fwd = new Vector3();
+const UP = new Vector3(0, 1, 0);
 
 export default function Player() {
   const body = useRef<RapierRigidBody>(null!);
@@ -41,6 +43,7 @@ export default function Player() {
   const { rapier, world } = useRapier();
   const [start] = useState<[number, number, number]>(() => useGame.getState().runtime.pos);
   const jumpCooldown = useRef(0);
+  const groundRay = useRef<InstanceType<typeof rapier.Ray> | null>(null);
 
   useFrame((_, delta) => {
     input.bind();
@@ -79,26 +82,39 @@ export default function Player() {
     const my = input.move.y;
     moveDir.set(mx, 0, -my);
     const moving = moveDir.lengthSq() > 0.001;
-    if (moving) moveDir.normalize().applyAxisAngle(new Vector3(0, 1, 0), yaw.current);
+    if (moving) moveDir.normalize().applyAxisAngle(UP, yaw.current);
 
     const lowStamina = st.player.stamina <= 1;
     const running = input.run && moving && !lowStamina;
     const speed = running ? RUN : WALK;
 
     const v = b.linvel();
-    b.setLinvel({ x: moveDir.x * speed, y: v.y, z: moveDir.z * speed }, true);
-
-    // Reliable ground check via raycast
-    jumpCooldown.current -= delta;
     const p = b.translation();
-    const ray = new rapier.Ray({ x: p.x, y: p.y - 0.84, z: p.z }, { x: 0, y: -1, z: 0 });
-    const hit = world.castRay(ray, 0.15, true);
+
+    // Vehicle knockback (set by TrafficSystem) — overrides movement this frame.
+    const knocked = performance.now() - avatar.knockAt < 70;
+    if (knocked) {
+      b.setLinvel({ x: avatar.knockX, y: 3.5, z: avatar.knockZ }, true);
+      avatar.knockAt = 0;
+    } else {
+      b.setLinvel({ x: moveDir.x * speed, y: v.y, z: moveDir.z * speed }, true);
+    }
+
+    // Reliable single-jump: raycast straight down, EXCLUDING the player's own body
+    // (otherwise the ray hits our own capsule and we'd be "grounded" mid-air).
+    jumpCooldown.current -= delta;
+    if (!groundRay.current) groundRay.current = new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 });
+    groundRay.current.origin.x = p.x;
+    groundRay.current.origin.y = p.y;
+    groundRay.current.origin.z = p.z;
+    // maxToi 1.0: standing capsule center is ~0.85 above ground → hits; mid-air → misses.
+    const hit = world.castRay(groundRay.current, 1.0, true, undefined, undefined, undefined, b);
     const grounded = hit !== null;
 
-    if (input.consume("jump") && grounded && jumpCooldown.current <= 0) {
+    if (input.consume("jump") && grounded && jumpCooldown.current <= 0 && !knocked) {
       b.setLinvel({ x: v.x, y: JUMP, z: v.z }, true);
       avatar.jumpAt = performance.now();
-      jumpCooldown.current = 0.5;
+      jumpCooldown.current = 0.45;
     }
 
     // Dodge: burst in current move/facing dir + i-frames.
@@ -108,12 +124,16 @@ export default function Player() {
       input.iframeUntil = performance.now() + DODGE_IFRAME_MS;
     }
 
-    // Weapon swap + inventory toggle.
+    // Weapon swap + inventory + view toggle.
     if (input.consume("swap")) {
       const g = useGame.getState();
       g.setEquipped(g.equipped === "pistol" ? "fists" : "pistol");
     }
     if (input.consume("inv")) useGame.getState().toggleInventory();
+    if (input.consume("view")) {
+      view.mode = view.mode === "tps" ? "fps" : "tps";
+      useGame.getState().notify(view.mode === "fps" ? "Mode FPS 👁️" : "Mode TPS 🎮");
+    }
 
     // Stamina drain/regen.
     useGame.getState().setStamina(st.player.stamina + (running ? -14 : 8) * delta);
@@ -125,26 +145,46 @@ export default function Player() {
     avatar.blocking = input.block;
     avatar.weapon = useGame.getState().equipped;
 
-    // Face movement direction.
-    if (moving) {
+    // Facing: aim along the camera when armed or in FPS; otherwise face movement.
+    const camYaw = yaw.current + Math.PI; // character looks away from the camera
+    const armed = st.equipped === "pistol";
+    if (view.mode === "fps" || armed) {
+      faceYaw.current = camYaw;
+    } else if (moving) {
       faceYaw.current = MathUtils.lerp(faceYaw.current, Math.atan2(moveDir.x, moveDir.z), 0.25);
-      if (visual.current) visual.current.rotation.y = faceYaw.current;
+    }
+    if (visual.current) {
+      visual.current.rotation.y = faceYaw.current;
+      visual.current.visible = view.mode !== "fps"; // hide own body in first person
     }
 
     useGame.getState().setPlayerPos([p.x, p.y, p.z]);
     useGame.getState().setPlayerFacing(faceYaw.current);
 
-    // Third-person orbit camera: yaw (around) + pitch (up/down).
-    const dist = 8.5;
-    const horiz = Math.cos(pitch.current) * dist;
-    const vert = 2.2 + Math.sin(pitch.current) * dist;
-    camWanted.set(
-      p.x + Math.sin(yaw.current) * horiz,
-      Math.max(p.y + 1.2, p.y + vert),
-      p.z + Math.cos(yaw.current) * horiz
-    );
-    camera.position.lerp(camWanted, 0.14);
-    camera.lookAt(camTarget.set(p.x, p.y + 1.5, p.z));
+    if (view.mode === "fps") {
+      // First person: camera at the eyes, look along yaw + pitch.
+      const eyeY = p.y + 1.5;
+      const lp = Math.max(-1.2, Math.min(1.2, pitch.current - 0.3));
+      const cp = Math.cos(lp);
+      camera.position.set(p.x, eyeY, p.z);
+      camera.lookAt(
+        p.x + Math.sin(camYaw) * cp,
+        eyeY + Math.sin(lp),
+        p.z + Math.cos(camYaw) * cp
+      );
+    } else {
+      // Third-person orbit camera: yaw (around) + pitch (up/down).
+      const dist = 8.5;
+      const horiz = Math.cos(pitch.current) * dist;
+      const vert = 2.2 + Math.sin(pitch.current) * dist;
+      camWanted.set(
+        p.x + Math.sin(yaw.current) * horiz,
+        Math.max(p.y + 1.2, p.y + vert),
+        p.z + Math.cos(yaw.current) * horiz
+      );
+      camera.position.lerp(camWanted, 0.16);
+      camera.lookAt(camTarget.set(p.x, p.y + 1.5, p.z));
+    }
   });
 
   return (

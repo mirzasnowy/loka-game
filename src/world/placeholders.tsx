@@ -621,6 +621,42 @@ function PlayerChar(props: PlaceholderProps) {
   );
 }
 
+// ─── Minimarket (Indomaret / Alfamart) ──────────────────────────────────────
+function makeMinimart(band: string, accent: string) {
+  return function Minimart(props: PlaceholderProps) {
+    return (
+      <group {...props}>
+        {/* Building body */}
+        <mesh position={[0, 2.4, 0]} castShadow receiveShadow><boxGeometry args={[10, 4.8, 8]} /><meshLambertMaterial color="#f4f6f8" /></mesh>
+        {/* Brand sign band across the top of the storefront */}
+        <mesh position={[0, 4.45, 4.06]}><boxGeometry args={[10.1, 1.0, 0.3]} /><meshLambertMaterial color={band} /></mesh>
+        {/* Accent stripe */}
+        <mesh position={[0, 3.78, 4.07]}><boxGeometry args={[10.1, 0.28, 0.3]} /><meshLambertMaterial color={accent} /></mesh>
+        {/* Sign text plate (white) */}
+        <mesh position={[0, 4.45, 4.23]}><boxGeometry args={[5.2, 0.52, 0.05]} /><meshLambertMaterial color="#ffffff" /></mesh>
+        {/* Glass storefront */}
+        <mesh position={[0, 1.85, 4.03]}><boxGeometry args={[8.6, 3.0, 0.1]} /><meshLambertMaterial color="#bfe6f4" transparent opacity={0.6} /></mesh>
+        {/* Glass mullions */}
+        {[-2.8, 0, 2.8].map((x) => (
+          <mesh key={x} position={[x, 1.85, 4.09]}><boxGeometry args={[0.12, 3.0, 0.08]} /><meshLambertMaterial color="#e8eef2" /></mesh>
+        ))}
+        {/* Automatic door frame */}
+        <mesh position={[0, 1.5, 4.12]}><boxGeometry args={[1.9, 2.4, 0.08]} /><meshLambertMaterial color={accent} /></mesh>
+        {/* Roof slab */}
+        <mesh position={[0, 4.95, 0]} castShadow><boxGeometry args={[10.4, 0.45, 8.4]} /><meshLambertMaterial color="#d6dadf" /></mesh>
+        {/* Rooftop AC units */}
+        {[-2.4, 2.4].map((x) => (
+          <mesh key={x} position={[x, 5.4, -2]} castShadow><boxGeometry args={[1.5, 0.85, 1.5]} /><meshLambertMaterial color="#cfd4da" /></mesh>
+        ))}
+        {/* Bollards out front */}
+        {[-3.5, -1.2, 1.2, 3.5].map((x) => (
+          <mesh key={x} position={[x, 0.4, 5.2]}><cylinderGeometry args={[0.12, 0.14, 0.8, 7]} /><meshLambertMaterial color={accent} /></mesh>
+        ))}
+      </group>
+    );
+  };
+}
+
 // ─── Registration ─────────────────────────────────────────────────────────────
 let done = false;
 export function registerPlaceholders() {
@@ -662,4 +698,8 @@ export function registerPlaceholders() {
   // Street structures
   registerAsset("halte",   { placeholder: Halte });
   registerAsset("station", { placeholder: Station });
+
+  // Minimarkets
+  registerAsset("store_indomaret", { placeholder: makeMinimart("#1763b6", "#e23b2e") }); // blue + red
+  registerAsset("store_alfamart",  { placeholder: makeMinimart("#d11f2a", "#f5c518") }); // red + yellow
 }

@@ -16,4 +16,8 @@ export const avatar = {
   comboCount: 1,   // 1=jab, 2=hook, 3+=uppercut
   weapon: "fists" as "fists" | "pistol",
   ridingMode: false as false | "moto" | "car",
+  // vehicle knockback (set by TrafficSystem, applied + cleared by Player)
+  knockAt: 0,
+  knockX: 0,
+  knockZ: 0,
 };

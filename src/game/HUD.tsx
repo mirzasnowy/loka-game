@@ -5,6 +5,7 @@ import { useGame, type InvItem } from "@/core/store";
 import { input, type Action } from "@/core/input";
 import { QUESTS, expForLevel, MAG_CAP } from "@/core/store";
 import { VENDORS } from "@/data/vendors";
+import { avatar } from "@/player/avatarState";
 import Minimap from "./Minimap";
 
 const FOOD = Object.fromEntries(VENDORS.map((v) => [v.food.id, v.food]));
@@ -23,20 +24,42 @@ export default function HUD() {
       <Toast />
       <WeaponHUD />
       <Crosshair />
+      <DamageVignette />
       <MobileControls />
       <InventoryPanel />
     </div>
   );
 }
 
-function Crosshair() {
-  const hitTime = useGame((s) => s.hitMarkerTime ?? 0);
-  const now = performance.now();
-  const isHit = now - hitTime < 200; // red for 200ms
-  
+/** Red screen flash when the player takes damage (polls avatar.hurtAt, no store churn). */
+function DamageVignette() {
+  const [op, setOp] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const dt = performance.now() - avatar.hurtAt;
+      setOp(dt < 450 ? (1 - dt / 450) * 0.55 : 0);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  if (op <= 0.001) return null;
   return (
-    <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", fontSize: 24, fontWeight: 300, color: isHit ? "#ff3333" : "rgba(255, 255, 255, 0.7)", textShadow: "0 0 2px #000", pointerEvents: "none", zIndex: 10 }}>
-      +
+    <div style={{ position: "absolute", inset: 0, pointerEvents: "none",
+      background: `radial-gradient(ellipse at center, transparent 45%, rgba(190,0,0,${op}) 100%)` }} />
+  );
+}
+
+function Crosshair() {
+  const equipped = useGame((s) => s.equipped);
+  const hitTime = useGame((s) => s.hitMarkerTime ?? 0);
+  const isHit = performance.now() - hitTime < 200;
+  if (equipped !== "pistol") return null; // only when aiming
+  return (
+    <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 22, height: 22, pointerEvents: "none", zIndex: 10 }}>
+      <div style={{ position: "absolute", top: "50%", left: 0, width: "100%", height: 2, marginTop: -1, background: isHit ? "#ff3333" : "rgba(255,255,255,0.8)" }} />
+      <div style={{ position: "absolute", left: "50%", top: 0, height: "100%", width: 2, marginLeft: -1, background: isHit ? "#ff3333" : "rgba(255,255,255,0.8)" }} />
     </div>
   );
 }
@@ -130,11 +153,11 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
 function Stats() {
   const p = useGame((s) => s.player);
   return (
-    <div style={{ position: "absolute", top: 12, left: 12, fontSize: 13 }}>
+    <div style={{ position: "absolute", top: 12, left: 12, fontSize: 12.5, background: "rgba(14,17,23,0.5)", backdropFilter: "blur(6px)", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", minWidth: 154 }}>
       <div>❤️ HP <Bar value={p.health} max={p.maxHealth} color="#e53935" /></div>
-      <div style={{ marginTop: 4 }}>⚡ Stamina <Bar value={p.stamina} max={p.maxStamina} color="#ffb300" /></div>
-      <div style={{ marginTop: 6, fontWeight: 600 }}>Rp {p.money.toLocaleString("id-ID")}</div>
-      <div style={{ marginTop: 2, fontSize: 12 }}>Lv {p.level} · EXP {p.exp}/{expForLevel(p.level)}</div>
+      <div style={{ marginTop: 5 }}>⚡ Stamina <Bar value={p.stamina} max={p.maxStamina} color="#ffb300" /></div>
+      <div style={{ marginTop: 7, fontWeight: 700, color: "#ffe082" }}>Rp {p.money.toLocaleString("id-ID")}</div>
+      <div style={{ marginTop: 2, fontSize: 11.5, opacity: 0.85 }}>Lv {p.level} · {p.exp}/{expForLevel(p.level)} EXP</div>
     </div>
   );
 }
@@ -243,6 +266,7 @@ function MobileControls() {
       <div style={{ position: "absolute", right: 24, bottom: 220, display: "flex", flexDirection: "column", gap: 10, pointerEvents: "auto", alignItems: "flex-end" }}>
         <ActBtn action="interact" label="Aksi (E)" color="rgba(46,125,50,0.8)" small />
         <ActBtn action="swap" label="Senjata" color="rgba(55,71,79,0.8)" small />
+        <ActBtn action="view" label="👁 Mode" color="rgba(70,55,90,0.85)" small />
       </div>
 
       {/* Inventory button (Top Left) */}

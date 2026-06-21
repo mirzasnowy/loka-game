@@ -54,9 +54,11 @@ export default function TimeWeather() {
   const setWeather = useGame((s) => s.setWeather);
 
   const weatherTimer = useRef(20 + Math.random() * 40);
+  const lightning = useRef(0); // seconds remaining on current bolt flash
   const tmpSky = useMemo(() => new Color(), []);
   const tmpSun = useMemo(() => new Color(), []);
   const sunVec = useMemo(() => new Vector3(), []);
+  const flashWhite = useMemo(() => new Color("#ffffff"), []);
 
   const rainGeo = useMemo(() => {
     const g = new BufferGeometry();
@@ -147,6 +149,15 @@ export default function TimeWeather() {
         rain.current.position.set(px, 0, pz);
       }
     }
+
+    // Lightning (kilat) during storms — brief full-scene white flash.
+    if (wet && lightning.current <= 0 && Math.random() < 0.006) lightning.current = 0.22;
+    if (lightning.current > 0) {
+      lightning.current -= delta;
+      const f = Math.max(0, lightning.current / 0.22);
+      if (amb.current) amb.current.intensity += f * 3.2;
+      if (scene.background instanceof Color) scene.background.lerp(flashWhite, f * 0.75);
+    }
   });
 
   return (
@@ -190,8 +201,14 @@ export default function TimeWeather() {
         mieCoefficient={0.005}
         mieDirectionalG={0.8}
       />
-      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-      
+      <Stars radius={300} depth={60} count={1800} factor={5} saturation={0} fade speed={0.6} />
+
+      {/* Soft volumetric clouds high above the city */}
+      <Clouds limit={40} range={120} position={[0, 70, 0]}>
+        <Cloud seed={1} segments={18} bounds={[180, 12, 180]} volume={36} color="#ffffff" opacity={0.55} speed={0.1} />
+        <Cloud seed={7} segments={14} bounds={[140, 10, 140]} volume={28} color="#eaf2ff" opacity={0.4} speed={0.08} />
+      </Clouds>
+
       {/* Rain */}
       <points ref={rain} geometry={rainGeo} visible={false}>
         <pointsMaterial color="#afc6d6" size={0.18} transparent opacity={0.6} />

@@ -1,12 +1,14 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import { Object3D, Color, InstancedMesh, CanvasTexture } from "three";
 import { Text } from "@react-three/drei";
 import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { Asset } from "@/core/assetRegistry";
 import { WORLD, DISTRICTS } from "./worldConfig";
 import { generateCity } from "./proc";
+import { traffic, YELLOW_TIME } from "@/systems/trafficState";
 import {
   ROAD_LINES, ROAD_HALF, SIDEWALK_OFF, SIDEWALK_W, PARK_RADIUS, MAP, inPark,
 } from "./grid";
@@ -15,18 +17,31 @@ const tmp = new Object3D();
 const tmpColor = new Color();
 
 const winTex = (() => {
-  if (typeof document === 'undefined') return undefined;
+  if (typeof document === "undefined") return undefined;
   const c = document.createElement("canvas");
-  c.width = 512; c.height = 512;
+  c.width = 256; c.height = 256;
   const ctx = c.getContext("2d")!;
-  ctx.fillStyle = "#16202a"; ctx.fillRect(0,0,512,512);
-  ctx.fillStyle = "#ffffff";
-  for (let x = 16; x < 512; x += 128) {
-    for (let y = 16; y < 512; y += 128) {
-      ctx.fillRect(x, y, 96, 96);
+  // mullion frame color
+  ctx.fillStyle = "#2a3540"; ctx.fillRect(0, 0, 256, 256);
+  // glass panes with slight per-pane variation (some lit, some sky-reflective)
+  const cols = 6, rows = 8, pad = 3;
+  const pw = 256 / cols, ph = 256 / rows;
+  for (let x = 0; x < cols; x++) {
+    for (let y = 0; y < rows; y++) {
+      const r = (Math.sin(x * 12.9 + y * 78.2) * 43758.5) % 1;
+      const lit = (r + 1) % 1;
+      // base blue glass, occasionally warm-lit window
+      const col = lit > 0.86 ? "#ffe9a8" : lit > 0.6 ? "#bfe2f4" : "#9fcbe6";
+      ctx.fillStyle = col;
+      ctx.fillRect(x * pw + pad, y * ph + pad, pw - pad * 2, ph - pad * 2);
+      // subtle highlight streak
+      ctx.fillStyle = "rgba(255,255,255,0.14)";
+      ctx.fillRect(x * pw + pad, y * ph + pad, (pw - pad * 2) * 0.35, ph - pad * 2);
     }
   }
-  return new CanvasTexture(c);
+  const t = new CanvasTexture(c);
+  t.anisotropy = 4;
+  return t;
 })();
 
 // ─── Buildings (body + roof + glass facade + tall entrance + rooftop unit) ───
@@ -431,46 +446,28 @@ function StreetProps() {
   );
 }
 
-// ─── Minimarkets (only on major intersections) ───────────────────────────────
+// ─── Minimarkets (detailed Indomaret / Alfamart, facing the road) ────────────
 function Minimarkets() {
-  const positions = useMemo(() => {
-    const pts: {x: number, z: number, rot: number}[] = [];
-    const major = [-70, 0, 70, 140];
+  const stores = useMemo(() => {
+    const pts: { x: number; z: number; id: string }[] = [];
+    const major = [-72, -24, 72, 120];
+    let n = 0;
     for (const ix of major) {
       for (const iz of major) {
         if (inPark(ix, iz)) continue;
-        pts.push({ x: ix - 18, z: iz - 18, rot: 0 });
+        // sit them on the buildable block, storefront facing +z toward the road
+        pts.push({ x: ix + 16, z: iz - SIDEWALK_OFF - 6, id: n % 2 === 0 ? "store_indomaret" : "store_alfamart" });
+        n++;
       }
     }
     return pts;
   }, []);
 
-  const baseRef = useRef<InstancedMesh>(null!);
-  const signRef = useRef<InstancedMesh>(null!);
-
-  useLayoutEffect(() => {
-    positions.forEach((p, i) => {
-      tmp.position.set(p.x, 3, p.z); tmp.rotation.set(0, p.rot, 0); tmp.scale.set(12, 6, 12); tmp.updateMatrix();
-      baseRef.current.setMatrixAt(i, tmp.matrix); baseRef.current.setColorAt(i, tmpColor.set("#f8f8fa"));
-
-      tmp.position.set(p.x, 6.5, p.z + 6.1); tmp.scale.set(12, 1.5, 0.5); tmp.updateMatrix();
-      signRef.current.setMatrixAt(i, tmp.matrix); signRef.current.setColorAt(i, tmpColor.set("#2c4082"));
-    });
-    baseRef.current.instanceMatrix.needsUpdate = true;
-    if (baseRef.current.instanceColor) baseRef.current.instanceColor.needsUpdate = true;
-    signRef.current.instanceMatrix.needsUpdate = true;
-    if (signRef.current.instanceColor) signRef.current.instanceColor.needsUpdate = true;
-  }, [positions]);
-
   return (
     <>
-      <instancedMesh ref={baseRef} args={[undefined, undefined, positions.length]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
-      </instancedMesh>
-      <instancedMesh ref={signRef} args={[undefined, undefined, positions.length]} castShadow>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshLambertMaterial color="white" emissive="#4060c0" emissiveIntensity={0.8} />
-      </instancedMesh>
+      {stores.map((s, i) => (
+        <Asset key={i} id={s.id} position={[s.x, 0, s.z]} />
+      ))}
     </>
   );
 }
@@ -527,6 +524,76 @@ function Gerobaks() {
   );
 }
 
+// ─── Traffic lights (synced to the shared signal phase) ──────────────────────
+const RED = new Color("#ff2a2a");
+const YEL = new Color("#ffd21a");
+const GRN = new Color("#2ad24a");
+
+function TrafficLights() {
+  const spots = useMemo(() => {
+    const pts: { x: number; z: number }[] = [];
+    const central = ROAD_LINES.filter((c) => Math.abs(c) <= 130);
+    for (const ix of central) for (const iz of central) {
+      if (inPark(ix, iz)) continue;
+      pts.push({ x: ix + SIDEWALK_OFF + 0.6, z: iz + SIDEWALK_OFF + 0.6 });
+    }
+    return pts;
+  }, []);
+
+  const poleRef = useRef<InstancedMesh>(null!);
+  const headRef = useRef<InstancedMesh>(null!);
+  const zLampRef = useRef<InstancedMesh>(null!); // controls N-S (z-axis) traffic
+  const xLampRef = useRef<InstancedMesh>(null!); // controls E-W (x-axis) traffic
+  const n = spots.length;
+
+  useLayoutEffect(() => {
+    spots.forEach((p, i) => {
+      tmp.position.set(p.x, 2.5, p.z); tmp.rotation.set(0, 0, 0); tmp.scale.set(0.16, 5, 0.16); tmp.updateMatrix();
+      poleRef.current.setMatrixAt(i, tmp.matrix);
+      tmp.position.set(p.x, 5.2, p.z); tmp.scale.set(0.5, 1.1, 0.5); tmp.updateMatrix();
+      headRef.current.setMatrixAt(i, tmp.matrix);
+      tmp.position.set(p.x, 5.45, p.z + 0.28); tmp.scale.setScalar(0.18); tmp.updateMatrix();
+      zLampRef.current.setMatrixAt(i, tmp.matrix);
+      tmp.position.set(p.x + 0.28, 5.45, p.z); tmp.scale.setScalar(0.18); tmp.updateMatrix();
+      xLampRef.current.setMatrixAt(i, tmp.matrix);
+    });
+    poleRef.current.instanceMatrix.needsUpdate = true;
+    headRef.current.instanceMatrix.needsUpdate = true;
+    zLampRef.current.instanceMatrix.needsUpdate = true;
+    xLampRef.current.instanceMatrix.needsUpdate = true;
+  }, [spots]);
+
+  useFrame(() => {
+    const zGreen = traffic.phase === 0;
+    const yellow = traffic.timer < YELLOW_TIME;
+    const zc = zGreen ? (yellow ? YEL : GRN) : RED;
+    const xc = !zGreen ? (yellow ? YEL : GRN) : RED;
+    for (let i = 0; i < n; i++) {
+      zLampRef.current.setColorAt(i, zc);
+      xLampRef.current.setColorAt(i, xc);
+    }
+    if (zLampRef.current.instanceColor) zLampRef.current.instanceColor.needsUpdate = true;
+    if (xLampRef.current.instanceColor) xLampRef.current.instanceColor.needsUpdate = true;
+  });
+
+  return (
+    <>
+      <instancedMesh ref={poleRef} args={[undefined, undefined, n]} castShadow>
+        <cylinderGeometry args={[0.5, 0.5, 1, 6]} /><meshLambertMaterial color="#3a3f45" />
+      </instancedMesh>
+      <instancedMesh ref={headRef} args={[undefined, undefined, n]} castShadow>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="#23272c" />
+      </instancedMesh>
+      <instancedMesh ref={zLampRef} args={[undefined, undefined, n]}>
+        <sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial vertexColors />
+      </instancedMesh>
+      <instancedMesh ref={xLampRef} args={[undefined, undefined, n]}>
+        <sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial vertexColors />
+      </instancedMesh>
+    </>
+  );
+}
+
 function DistrictLabels() {
   return (
     <>
@@ -572,6 +639,7 @@ export default function World() {
       <StreetProps />
       <Minimarkets />
       <Gerobaks />
+      <TrafficLights />
 
       <Asset id="monas" position={[0, 0, 0]} />
       <DistrictLabels />
