@@ -1,6 +1,6 @@
 # Versioning Rule
 
-Current version: **1.2.3**
+Current version: **1.2.4**
 
 ## Scheme: `MAJOR.MINOR.PATCH`
 
@@ -19,6 +19,10 @@ stable and we deliberately cut a milestone.
 3. Push `main` → Cloudflare Pages auto-redeploys to https://loka.mirzakur.xyz
 
 ## History
+- 1.2.4 — solid colliders for world props (trees, lamps, traffic poles, benches,
+  bollards, carts, stores, haltes, station) so you can't walk through them; proper
+  3-aspect traffic-light models (red/yellow/green stacked) at intersections, lit per
+  the signal phase, with vehicles obeying them.
 - 1.2.3 — vehicle crash effects (inelastic jolt, sparks, camera shake), vehicles run
   over & kill pedestrians, rear-end braking (no more driving through cars), kill counter
   (warga/preman) in HUD, money drops from kills you can walk over to collect, proper

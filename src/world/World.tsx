@@ -6,6 +6,7 @@ import { Object3D, Color, InstancedMesh, CanvasTexture } from "three";
 import { Text } from "@react-three/drei";
 import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { Asset } from "@/core/assetRegistry";
+import { VENDOR_PLACEMENTS } from "@/data/vendors";
 import { WORLD, DISTRICTS } from "./worldConfig";
 import { generateCity } from "./proc";
 import { traffic, YELLOW_TIME } from "@/systems/trafficState";
@@ -333,20 +334,34 @@ function Trees() {
   );
 }
 
+// Shared placements (used by both the visuals and the physics colliders).
+function lampSpots(): [number, number][] {
+  const pts: [number, number][] = [];
+  for (const ix of ROAD_LINES) {
+    for (const iz of ROAD_LINES) {
+      if (inPark(ix, iz)) continue;
+      if (iz < WORLD.seaLine + 10) continue;
+      const o = SIDEWALK_OFF;
+      pts.push([ix + o, iz + o], [ix - o, iz + o], [ix + o, iz - o], [ix - o, iz - o]);
+    }
+  }
+  return pts;
+}
+function trafficSpots(): { x: number; z: number; axis: "x" | "z" }[] {
+  const pts: { x: number; z: number; axis: "x" | "z" }[] = [];
+  const central = ROAD_LINES.filter((c) => Math.abs(c) <= 130);
+  const o = SIDEWALK_OFF + 0.8;
+  for (const ix of central) for (const iz of central) {
+    if (inPark(ix, iz)) continue;
+    pts.push({ x: ix + o, z: iz + o, axis: "z" }); // controls N-S traffic
+    pts.push({ x: ix - o, z: iz - o, axis: "x" }); // controls E-W traffic
+  }
+  return pts;
+}
+
 // ─── Street lamps at intersection corners ────────────────────────────────────
 function StreetLamps() {
-  const positions = useMemo(() => {
-    const pts: [number, number][] = [];
-    for (const ix of ROAD_LINES) {
-      for (const iz of ROAD_LINES) {
-        if (inPark(ix, iz)) continue;
-        if (iz < WORLD.seaLine + 10) continue;
-        const o = SIDEWALK_OFF;
-        pts.push([ix + o, iz + o], [ix - o, iz + o], [ix + o, iz - o], [ix - o, iz - o]);
-      }
-    }
-    return pts;
-  }, []);
+  const positions = useMemo(lampSpots, []);
 
   const poleRef = useRef<InstancedMesh>(null!);
   const armRef  = useRef<InstancedMesh>(null!);
@@ -475,56 +490,52 @@ function Minimarkets() {
   );
 }
 
-// ─── Traffic lights (synced to the shared signal phase) ──────────────────────
+// ─── Traffic lights (proper 3-aspect signal, synced to the shared phase) ─────
 const RED = new Color("#ff2a2a");
 const YEL = new Color("#ffd21a");
 const GRN = new Color("#2ad24a");
+const OFFC = new Color("#1c1f22"); // unlit lamp
 
 function TrafficLights() {
-  const spots = useMemo(() => {
-    const pts: { x: number; z: number }[] = [];
-    const central = ROAD_LINES.filter((c) => Math.abs(c) <= 130);
-    for (const ix of central) for (const iz of central) {
-      if (inPark(ix, iz)) continue;
-      pts.push({ x: ix + SIDEWALK_OFF + 0.6, z: iz + SIDEWALK_OFF + 0.6 });
-    }
-    return pts;
-  }, []);
-
-  const poleRef = useRef<InstancedMesh>(null!);
-  const headRef = useRef<InstancedMesh>(null!);
-  const zLampRef = useRef<InstancedMesh>(null!); // controls N-S (z-axis) traffic
-  const xLampRef = useRef<InstancedMesh>(null!); // controls E-W (x-axis) traffic
+  const spots = useMemo(trafficSpots, []);
   const n = spots.length;
+  const poleRef = useRef<InstancedMesh>(null!);
+  const boxRef  = useRef<InstancedMesh>(null!);   // signal housing
+  const redRef  = useRef<InstancedMesh>(null!);
+  const yelRef  = useRef<InstancedMesh>(null!);
+  const grnRef  = useRef<InstancedMesh>(null!);
 
   useLayoutEffect(() => {
     spots.forEach((p, i) => {
-      tmp.position.set(p.x, 2.5, p.z); tmp.rotation.set(0, 0, 0); tmp.scale.set(0.16, 5, 0.16); tmp.updateMatrix();
+      // pole
+      tmp.position.set(p.x, 2.6, p.z); tmp.rotation.set(0, 0, 0); tmp.scale.set(0.16, 5.2, 0.16); tmp.updateMatrix();
       poleRef.current.setMatrixAt(i, tmp.matrix);
-      tmp.position.set(p.x, 5.2, p.z); tmp.scale.set(0.5, 1.1, 0.5); tmp.updateMatrix();
-      headRef.current.setMatrixAt(i, tmp.matrix);
-      tmp.position.set(p.x, 5.45, p.z + 0.28); tmp.scale.setScalar(0.18); tmp.updateMatrix();
-      zLampRef.current.setMatrixAt(i, tmp.matrix);
-      tmp.position.set(p.x + 0.28, 5.45, p.z); tmp.scale.setScalar(0.18); tmp.updateMatrix();
-      xLampRef.current.setMatrixAt(i, tmp.matrix);
+      // housing (3-lamp box) near the top
+      tmp.position.set(p.x, 4.9, p.z); tmp.scale.set(0.42, 1.5, 0.42); tmp.updateMatrix();
+      boxRef.current.setMatrixAt(i, tmp.matrix);
+      // 3 stacked lamps, slightly proud of the housing front (+z)
+      tmp.scale.setScalar(0.17);
+      tmp.position.set(p.x, 5.32, p.z + 0.22); tmp.updateMatrix(); redRef.current.setMatrixAt(i, tmp.matrix);
+      tmp.position.set(p.x, 4.90, p.z + 0.22); tmp.updateMatrix(); yelRef.current.setMatrixAt(i, tmp.matrix);
+      tmp.position.set(p.x, 4.48, p.z + 0.22); tmp.updateMatrix(); grnRef.current.setMatrixAt(i, tmp.matrix);
     });
-    poleRef.current.instanceMatrix.needsUpdate = true;
-    headRef.current.instanceMatrix.needsUpdate = true;
-    zLampRef.current.instanceMatrix.needsUpdate = true;
-    xLampRef.current.instanceMatrix.needsUpdate = true;
+    [poleRef, boxRef, redRef, yelRef, grnRef].forEach((r) => { r.current.instanceMatrix.needsUpdate = true; });
   }, [spots]);
 
   useFrame(() => {
     const zGreen = traffic.phase === 0;
     const yellow = traffic.timer < YELLOW_TIME;
-    const zc = zGreen ? (yellow ? YEL : GRN) : RED;
-    const xc = !zGreen ? (yellow ? YEL : GRN) : RED;
     for (let i = 0; i < n; i++) {
-      zLampRef.current.setColorAt(i, zc);
-      xLampRef.current.setColorAt(i, xc);
+      const green = spots[i].axis === "z" ? zGreen : !zGreen;
+      // state: green has the go light; the side that just lost go flashes yellow first
+      const isR = !green;
+      const isY = green && yellow;
+      const isG = green && !yellow;
+      redRef.current.setColorAt(i, isR ? RED : OFFC);
+      yelRef.current.setColorAt(i, isY ? YEL : OFFC);
+      grnRef.current.setColorAt(i, isG ? GRN : OFFC);
     }
-    if (zLampRef.current.instanceColor) zLampRef.current.instanceColor.needsUpdate = true;
-    if (xLampRef.current.instanceColor) xLampRef.current.instanceColor.needsUpdate = true;
+    [redRef, yelRef, grnRef].forEach((r) => { if (r.current.instanceColor) r.current.instanceColor.needsUpdate = true; });
   });
 
   return (
@@ -532,16 +543,68 @@ function TrafficLights() {
       <instancedMesh ref={poleRef} args={[undefined, undefined, n]} castShadow>
         <cylinderGeometry args={[0.5, 0.5, 1, 6]} /><meshLambertMaterial color="#3a3f45" />
       </instancedMesh>
-      <instancedMesh ref={headRef} args={[undefined, undefined, n]} castShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="#23272c" />
+      <instancedMesh ref={boxRef} args={[undefined, undefined, n]} castShadow>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="#181b1e" />
       </instancedMesh>
-      <instancedMesh ref={zLampRef} args={[undefined, undefined, n]}>
-        <sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial vertexColors />
+      <instancedMesh ref={redRef} args={[undefined, undefined, n]}>
+        <sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial vertexColors toneMapped={false} />
       </instancedMesh>
-      <instancedMesh ref={xLampRef} args={[undefined, undefined, n]}>
-        <sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial vertexColors />
+      <instancedMesh ref={yelRef} args={[undefined, undefined, n]}>
+        <sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial vertexColors toneMapped={false} />
+      </instancedMesh>
+      <instancedMesh ref={grnRef} args={[undefined, undefined, n]}>
+        <sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial vertexColors toneMapped={false} />
       </instancedMesh>
     </>
+  );
+}
+
+// ─── Static colliders for world props (no more walking through trees/lamps) ──
+const HALTE_SPOTS: [number, number, number][] = [
+  [-30, 41, 0], [55, -24, -Math.PI / 2], [89, 12, Math.PI / 2], [-41, -76, Math.PI / 2],
+];
+
+function StaticColliders() {
+  const trees = useMemo(() => generateCity().trees, []);
+  const stores = useMemo(() => generateCity().stores, []);
+  const lamps = useMemo(lampSpots, []);
+  const tlights = useMemo(trafficSpots, []);
+  const benches = useMemo(() => Array.from({ length: 12 }, (_, k) => {
+    const a = (k / 12) * Math.PI * 2 + 0.26, r = 33; return [Math.cos(a) * r, Math.sin(a) * r] as [number, number];
+  }), []);
+  const bollards = useMemo(() => Array.from({ length: 28 }, (_, k) => {
+    const a = (k / 28) * Math.PI * 2, r = PARK_RADIUS - 1.5; return [Math.cos(a) * r, Math.sin(a) * r] as [number, number];
+  }), []);
+
+  return (
+    <RigidBody type="fixed" colliders={false}>
+      {trees.map((t, i) => (
+        <CuboidCollider key={`t${i}`} args={[0.42 * t.scale, 2.2, 0.42 * t.scale]} position={[t.x, 2.2, t.z]} />
+      ))}
+      {lamps.map((p, i) => (
+        <CuboidCollider key={`l${i}`} args={[0.18, 2.1, 0.18]} position={[p[0], 2.1, p[1]]} />
+      ))}
+      {tlights.map((p, i) => (
+        <CuboidCollider key={`tl${i}`} args={[0.2, 2.6, 0.2]} position={[p.x, 2.6, p.z]} />
+      ))}
+      {benches.map((p, i) => (
+        <CuboidCollider key={`b${i}`} args={[0.7, 0.45, 0.5]} position={[p[0], 0.45, p[1]]} />
+      ))}
+      {bollards.map((p, i) => (
+        <CuboidCollider key={`bo${i}`} args={[0.18, 0.45, 0.18]} position={[p[0], 0.45, p[1]]} />
+      ))}
+      {VENDOR_PLACEMENTS.map((v, i) => (
+        <CuboidCollider key={`c${i}`} args={[1.0, 0.9, 0.55]} position={[v.pos[0], 0.9, v.pos[2]]} />
+      ))}
+      {stores.map((s, i) => (
+        <CuboidCollider key={`s${i}`} args={[5.2, 3, 4.2]} position={[s.x, 2.4, s.z]} rotation={[0, s.rot, 0]} />
+      ))}
+      {HALTE_SPOTS.map(([x, z, rot], i) => (
+        <CuboidCollider key={`h${i}`} args={[2.7, 1.5, 1.2]} position={[x, 1.4, z]} rotation={[0, rot, 0]} />
+      ))}
+      {/* KRL station hall */}
+      <CuboidCollider args={[12, 4, 6]} position={[122, 4, 122]} rotation={[0, Math.PI, 0]} />
+    </RigidBody>
   );
 }
 
@@ -590,6 +653,7 @@ export default function World() {
       <StreetProps />
       <Minimarkets />
       <TrafficLights />
+      <StaticColliders />
 
       {/* Monas solid colliders so the player stands on the base, never sinks in */}
       <RigidBody type="fixed" colliders={false}>
