@@ -190,7 +190,7 @@ export default function TrafficSystem() {
 
       const k = KINDS[v.kind];
       const isMoto = v.kind < MOTO_KINDS;
-      const bodyY = k.wheelR + k.h / 2;
+      const bodyY = k.h / 2 + k.wheelR * 0.4;     // body bottom just above the wheels (no float)
       const cabY  = bodyY + (isMoto ? 0 : k.h * 0.5) + k.h * 0.38;
 
       bodyDummy.position.set(x, bodyY, z);

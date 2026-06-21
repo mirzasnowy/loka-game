@@ -30,11 +30,16 @@ export function hitNpcNear(px: number, pz: number, fx: number, fz: number, reach
     if (score > bestScore) { bestScore = score; best = i; }
   }
   if (best < 0) return { idx: -1, killed: false };
+  return { idx: best, killed: damageNpc(best, dmg) };
+}
+
+/** Apply damage to a specific NPC index. Returns true if it killed them. */
+export function damageNpc(idx: number, dmg: number): boolean {
+  if (idx < 0 || npcDead[idx]) return false;
   const now = performance.now();
-  npcHp[best] -= dmg;
-  npcHitAt[best] = now;
-  npcFleeUntil[best] = now + 6000;
-  let killed = false;
-  if (npcHp[best] <= 0) { npcDead[best] = 1; npcHitAt[best] = now; killed = true; }
-  return { idx: best, killed };
+  npcHp[idx] -= dmg;
+  npcHitAt[idx] = now;
+  npcFleeUntil[idx] = now + 6000;
+  if (npcHp[idx] <= 0) { npcDead[idx] = 1; npcHitAt[idx] = now; return true; }
+  return false;
 }

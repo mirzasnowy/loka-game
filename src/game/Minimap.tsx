@@ -12,7 +12,7 @@ import { QUESTS } from "@/data/quests";
  * enemies and the active quest marker. Plain 2D canvas = effectively free vs.
  * a second 3D render.
  */
-const SIZE = 150;
+const SIZE = 108;
 const RANGE = 160; // world units shown across the map radius
 
 export default function Minimap() {

@@ -1,35 +1,42 @@
 "use client";
 
 import { useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { InstancedMesh, Object3D, Vector3, Quaternion } from "three";
-import { useGame } from "@/core/store";
+import { useGame, MAX_NPCS, npcPositions } from "@/core/store";
 import { input } from "@/core/input";
 import { enemies, type EnemyEntry } from "./registries";
 import { avatar } from "@/player/avatarState";
-import { hitNpcNear } from "./npcState";
+import { npcDead, damageNpc } from "./npcState";
 
 /**
- * Pistol shooting. Fire (F / mobile button) chambers a round, plays the recoil +
- * muzzle flash (via avatar.fireAt → PlayerModel), auto-aims at the nearest enemy
- * in a forward cone, applies damage, and draws a bullet tracer. Enemies flash on
- * hit (entry.hitAt) and fall on death (entry.diedAt) — handled in CombatSystem.
+ * Pistol shooting — a PRECISE ray straight through the crosshair (camera forward).
+ * You must actually aim at a target; a tight cylinder radius means stray shots
+ * miss. Picks the closest thing the ray passes through (preman or pedestrian).
  */
 
-const RANGE = 44;
-const CONE = Math.cos((38 * Math.PI) / 180); // forward aim cone half-angle
+const RANGE = 60;
+const HIT_RADIUS = 0.55; // how close the ray must pass to a body to count
 const DMG = 34;
 const TRACER_MAX = 10;
 const TRACER_MS = 70;
 
-const fwd = new Vector3();
+const dir = new Vector3();
 const muzzle = new Vector3();
-const toE = new Vector3();
 const hit = new Vector3();
 const mid = new Vector3();
 const up = new Vector3(0, 1, 0);
 const dummy = new Object3D();
 const quat = new Quaternion();
+
+/** Distance along the ray to the closest approach to a point, or -1 if it misses. */
+function rayHitT(cx: number, cy: number, cz: number, ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, radius: number, maxT: number): number {
+  const t = (cx - ox) * dx + (cy - oy) * dy + (cz - oz) * dz;
+  if (t < 0 || t > maxT) return -1;
+  const px = ox + dx * t, py = oy + dy * t, pz = oz + dz * t;
+  const d2 = (px - cx) ** 2 + (py - cy) ** 2 + (pz - cz) ** 2;
+  return d2 <= radius * radius ? t : -1;
+}
 
 interface Tracer { from: Vector3; to: Vector3; until: number; }
 
@@ -37,80 +44,70 @@ export default function GunSystem() {
   const tracerRef = useRef<InstancedMesh>(null!);
   const tracers = useRef<Tracer[]>(Array.from({ length: TRACER_MAX }, () => ({ from: new Vector3(), to: new Vector3(), until: 0 })));
   const tIdx = useRef(0);
+  const { camera } = useThree();
 
   useFrame(() => {
     const st = useGame.getState();
     if (st.paused) return;
-
     const armed = st.equipped === "pistol" && !st.runtime.inVehicleId;
 
-    // Reload
-    if (input.consume("reload")) {
-      if (armed) st.reloadMag();
-    }
+    if (input.consume("reload")) { if (armed) st.reloadMag(); }
 
-    // Fire
     if (input.consume("fire")) {
-      if (!armed) {
-        st.setEquipped("pistol"); // auto-equip on first shot
-      } else {
-        if (st.ammo <= 0) st.reloadMag(); // seamless auto-reload when empty
+      if (!armed) { st.setEquipped("pistol"); }
+      else {
+        if (st.ammo <= 0) st.reloadMag();
         if (st.fireRound()) {
           const now = performance.now();
           avatar.fireAt = now;
 
+          // ray from the camera straight through the crosshair
+          camera.getWorldDirection(dir).normalize();
+          const ox = camera.position.x, oy = camera.position.y, oz = camera.position.z;
           const [px, py, pz] = st.runtime.pos;
-          const yaw = st.runtime.facing;
-          fwd.set(Math.sin(yaw), 0, Math.cos(yaw)).normalize();
-          muzzle.set(px + fwd.x * 0.6, py + 1.4, pz + fwd.z * 0.6);
+          muzzle.set(px + dir.x * 0.6, py + 1.4, pz + dir.z * 0.6);
 
-          // auto-aim: nearest preman in the forward cone within range
-          let best: EnemyEntry | null = null;
-          let bestScore = -Infinity;
+          // find the closest body the ray actually passes through
+          let bestT = RANGE;
+          let bestEnemy: EnemyEntry | null = null;
+          let bestNpc = -1;
+
           enemies.forEach((e) => {
             if (e.dead) return;
-            toE.set(e.pos[0] - px, 0, e.pos[2] - pz);
-            const d = toE.length();
-            if (d > RANGE) return;
-            toE.normalize();
-            const dot = toE.x * fwd.x + toE.z * fwd.z;
-            if (dot < CONE) return;
-            const score = dot - d / RANGE;
-            if (score > bestScore) { bestScore = score; best = e; }
+            const t = rayHitT(e.pos[0], 1.1, e.pos[2], ox, oy, oz, dir.x, dir.y, dir.z, HIT_RADIUS + 0.15, bestT);
+            if (t >= 0) { bestT = t; bestEnemy = e; bestNpc = -1; }
           });
-
-          if (best) {
-            const e = best as EnemyEntry;
-            hit.set(e.pos[0], 1.1, e.pos[2]);
-            e.hp -= DMG;
-            e.hitAt = now;
-            st.triggerHitMarker();
-            if (e.hp <= 0 && !e.dead) {
-              e.dead = true; e.diedAt = now;
-              st.addExp(45);
-              st.reportEvent("defeat", { target: "preman" });
-              st.notify("Preman tertembak! 🎯");
-            }
-          } else {
-            // no preman — try to hit an ordinary pedestrian
-            const res = hitNpcNear(px, pz, fwd.x, fwd.z, RANGE, DMG);
-            if (res.idx >= 0) {
-              st.triggerHitMarker();
-              hit.set(px + fwd.x * 8, 1.1, pz + fwd.z * 8);
-              if (res.killed) { st.addExp(15); st.notify("Warga tertembak 💀"); }
-            } else hit.copy(muzzle).addScaledVector(fwd, RANGE);
+          for (let i = 0; i < MAX_NPCS; i++) {
+            if (npcDead[i]) continue;
+            const nx = npcPositions[i * 2], nz = npcPositions[i * 2 + 1];
+            if (nx > 90000) continue;
+            const t = rayHitT(nx, 1.1, nz, ox, oy, oz, dir.x, dir.y, dir.z, HIT_RADIUS, bestT);
+            if (t >= 0) { bestT = t; bestNpc = i; bestEnemy = null; }
           }
 
-          const t = tracers.current[tIdx.current];
+          if (bestEnemy) {
+            const e = bestEnemy as EnemyEntry;
+            hit.set(e.pos[0], 1.1, e.pos[2]);
+            e.hp -= DMG; e.hitAt = now;
+            st.triggerHitMarker();
+            if (e.hp <= 0 && !e.dead) { e.dead = true; e.diedAt = now; st.addExp(45); st.reportEvent("defeat", { target: "preman" }); st.notify("Preman tertembak! 🎯"); }
+          } else if (bestNpc >= 0) {
+            hit.set(npcPositions[bestNpc * 2], 1.1, npcPositions[bestNpc * 2 + 1]);
+            st.triggerHitMarker();
+            if (damageNpc(bestNpc, DMG)) { st.addExp(15); st.notify("Warga tertembak 💀"); }
+          } else {
+            // clean miss — tracer flies to max range
+            hit.set(ox + dir.x * RANGE, oy + dir.y * RANGE, oz + dir.z * RANGE);
+          }
+
+          const tr = tracers.current[tIdx.current];
           tIdx.current = (tIdx.current + 1) % TRACER_MAX;
-          t.from.copy(muzzle);
-          t.to.copy(hit);
-          t.until = now + TRACER_MS;
+          tr.from.copy(muzzle); tr.to.copy(hit); tr.until = now + TRACER_MS;
         }
       }
     }
 
-    // Render tracers (thin stretched cylinders)
+    // render tracers
     const now = performance.now();
     const mesh = tracerRef.current;
     for (let i = 0; i < TRACER_MAX; i++) {
@@ -118,9 +115,7 @@ export default function GunSystem() {
       if (now < t.until) {
         const len = mid.copy(t.to).sub(t.from).length();
         dummy.position.copy(mid.copy(t.from).add(t.to).multiplyScalar(0.5));
-        // orient +Y axis along (to-from)
-        toE.copy(t.to).sub(t.from).normalize();
-        quat.setFromUnitVectors(up, toE);
+        quat.setFromUnitVectors(up, mid.copy(t.to).sub(t.from).normalize());
         dummy.quaternion.copy(quat);
         dummy.scale.set(1, Math.max(0.01, len), 1);
         dummy.updateMatrix();

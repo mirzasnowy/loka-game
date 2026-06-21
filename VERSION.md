@@ -1,6 +1,6 @@
 # Versioning Rule
 
-Current version: **1.2.1**
+Current version: **1.2.2**
 
 ## Scheme: `MAJOR.MINOR.PATCH`
 
@@ -19,6 +19,9 @@ stable and we deliberately cut a milestone.
 3. Push `main` → Cloudflare Pages auto-redeploys to https://loka.mirzakur.xyz
 
 ## History
+- 1.2.2 — fixed floating vehicles (traffic body height + drivable collider offset),
+  precise crosshair raycast shooting (no more random kills), FPS pistol aimed forward,
+  robust HUD (smaller minimap + one low fixed action row, no minimap overlap).
 - 1.2.1 — clock beside quest (top center), fixed non-overlapping action buttons,
   first-person viewmodel (animated hands/pistol), versioning rule.
 - 1.2.0 — boxer body/head punch motion, redesigned minimal GUI (hotbar, top banner).

@@ -51,7 +51,12 @@ export default function FPViewModel() {
     let rx = 0.22 + sway, ry = -0.30 + bob, rz = -0.55, rrot = -0.25;
     let lx = -0.26 + sway, ly = -0.34 + bob, lz = -0.58, lrot = -0.18;
 
-    if (armed) { rx = 0.10; ry = -0.24 + bob * 0.6; rz = -0.62; rrot = -0.35; lx = -0.02; ly = -0.30 + bob * 0.6; lz = -0.66; lrot = -0.5; }
+    // Pistol: both hands bring the gun to the centre, barrel level & pointing at
+    // the crosshair (ready-to-fire).
+    if (armed) {
+      rx = 0.07; ry = -0.16 + bob * 0.5; rz = -0.5; rrot = -0.02;
+      lx = -0.05; ly = -0.20 + bob * 0.5; lz = -0.52; lrot = -0.05;
+    }
 
     // PUNCH — alternate hand by combo move; lunge it forward
     const pt = (now - avatar.punchAt) / 230;

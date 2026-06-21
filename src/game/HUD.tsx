@@ -336,32 +336,33 @@ function InventoryPanel() {
 
 function MobileControls() {
   const equipped = useGame((s) => s.equipped);
-  // Each button is absolutely positioned so toggling the pistol (which shows/hides
-  // "Isi") never reflows the others — fixes the overlap-on-toggle bug.
+  // All buttons sit in ONE low horizontal row at fixed right-offsets. Nothing
+  // stacks upward (so it never collides with the minimap) and toggling the pistol
+  // never reflows the others (the "Isi" slot is reserved).
   return (
     <>
       <LookPad />
       <Joystick />
       {/* primary attack (corner) */}
-      <div style={{ position: "absolute", right: c(SR, 20), bottom: c(SB, 22), pointerEvents: "auto", zIndex: 50 }}>
+      <div style={{ position: "absolute", right: c(SR, 16), bottom: c(SB, 18), pointerEvents: "auto", zIndex: 50 }}>
         {equipped === "pistol"
           ? <ActBtn action="fire" label="Tembak" color="rgba(229,57,53,0.92)" big />
           : <ActBtn action="punch" label="Pukul" color="rgba(211,47,47,0.92)" big />}
       </div>
-      {/* jump (left of primary) */}
-      <div style={{ position: "absolute", right: c(SR, 112), bottom: c(SB, 26), pointerEvents: "auto", zIndex: 50 }}>
-        <ActBtn action="jump" label="Lompat" color="rgba(21,101,192,0.9)" small />
-      </div>
-      {/* action (above jump) */}
-      <div style={{ position: "absolute", right: c(SR, 112), bottom: c(SB, 92), pointerEvents: "auto", zIndex: 50 }}>
-        <ActBtn action="interact" label="Aksi" color="rgba(46,125,50,0.9)" small />
-      </div>
-      {/* reload (above primary, pistol only) */}
+      {/* reload (reserved slot, pistol only) */}
       {equipped === "pistol" && (
-        <div style={{ position: "absolute", right: c(SR, 32), bottom: c(SB, 108), pointerEvents: "auto", zIndex: 50 }}>
+        <div style={{ position: "absolute", right: c(SR, 102), bottom: c(SB, 28), pointerEvents: "auto", zIndex: 50 }}>
           <ActBtn action="reload" label="Isi" color="rgba(93,64,55,0.9)" small />
         </div>
       )}
+      {/* jump */}
+      <div style={{ position: "absolute", right: c(SR, 162), bottom: c(SB, 28), pointerEvents: "auto", zIndex: 50 }}>
+        <ActBtn action="jump" label="Lompat" color="rgba(21,101,192,0.9)" small />
+      </div>
+      {/* action */}
+      <div style={{ position: "absolute", right: c(SR, 222), bottom: c(SB, 28), pointerEvents: "auto", zIndex: 50 }}>
+        <ActBtn action="interact" label="Aksi" color="rgba(46,125,50,0.9)" small />
+      </div>
     </>
   );
 }

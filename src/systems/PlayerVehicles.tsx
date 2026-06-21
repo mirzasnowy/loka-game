@@ -38,7 +38,9 @@ function VehicleEntity({ uid, spec, pos }: { uid: string; spec: VehicleSpec; pos
       mass={spec.kind === "bus" ? 8 : spec.kind === "scooter" ? 1.5 : 4}
       canSleep={false}
     >
-      <CuboidCollider args={h} />
+      {/* Collider lifted by its half-height so its BOTTOM sits at the body origin
+          (the visual is drawn standing on the ground) — stops vehicles floating. */}
+      <CuboidCollider args={h} position={[0, h[1], 0]} />
       <Asset id={spec.assetId} />
       {driving && (
         <group position={[0, spec.seatHeight, spec.kind === "scooter" ? 0 : -0.2]}>
