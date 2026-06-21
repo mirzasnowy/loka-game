@@ -25,6 +25,8 @@ export default function PlayerModel() {
   const armR  = useRef<Group>(null!);
   const legL  = useRef<Group>(null!);
   const legR  = useRef<Group>(null!);
+  const gunG  = useRef<Group>(null!);
+  const muzzle= useRef<Group>(null!);
   const phase = useRef(0);
   const lean  = useRef(0);
 
@@ -92,6 +94,26 @@ export default function PlayerModel() {
       lean.current = MathUtils.lerp(lean.current, -0.12, k); // lean back
     }
 
+    // WEAPON — pistol aim pose (overrides arm swing), recoil + muzzle flash
+    const armed = avatar.weapon === "pistol";
+    if (gunG.current) gunG.current.visible = armed;
+    if (armed) {
+      const aim = 1 - Math.exp(-18 * delta);
+      armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -1.32, aim);
+      armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -1.08, aim);
+      armR.current.rotation.z = MathUtils.lerp(armR.current.rotation.z, -0.04, aim);
+      armL.current.rotation.z = MathUtils.lerp(armL.current.rotation.z, 0.34, aim);
+      const ft = (now - avatar.fireAt) / 130;
+      if (ft >= 0 && ft < 1) {
+        const k = Math.sin(ft * Math.PI);
+        armR.current.rotation.x -= 0.4 * k; // recoil kick up
+        bodyG.current.rotation.y = MathUtils.lerp(0, -0.12, k);
+      }
+      if (muzzle.current) muzzle.current.visible = ft >= 0 && ft < 0.45;
+    } else if (muzzle.current) {
+      muzzle.current.visible = false;
+    }
+
     bodyG.current.rotation.x = lean.current;
     bodyG.current.position.y = idleBob;
   });
@@ -119,10 +141,24 @@ export default function PlayerModel() {
         <mesh position={[0, -0.22, 0]} castShadow><boxGeometry args={[0.14, 0.44, 0.16]} /><meshLambertMaterial color={JACKET} /></mesh>
         <mesh position={[0, -0.56, 0.02]} castShadow><boxGeometry args={[0.12, 0.34, 0.14]} /><meshLambertMaterial color={SKIN} /></mesh>
       </group>
-      {/* Right arm pivot */}
+      {/* Right arm pivot (holds the pistol) */}
       <group ref={armR} position={[0.31, 1.34, 0]}>
         <mesh position={[0, -0.22, 0]} castShadow><boxGeometry args={[0.14, 0.44, 0.16]} /><meshLambertMaterial color={JACKET} /></mesh>
         <mesh position={[0, -0.56, 0.02]} castShadow><boxGeometry args={[0.12, 0.34, 0.14]} /><meshLambertMaterial color={SKIN} /></mesh>
+        {/* Pistol in hand — pointing along -Y of the arm (forward when arm is raised) */}
+        <group ref={gunG} position={[0, -0.72, 0.12]} visible={false}>
+          {/* slide/body */}
+          <mesh position={[0, 0, 0.1]} castShadow><boxGeometry args={[0.09, 0.13, 0.34]} /><meshLambertMaterial color="#33373d" /></mesh>
+          {/* barrel */}
+          <mesh position={[0, 0.03, 0.3]}><boxGeometry args={[0.06, 0.07, 0.16]} /><meshLambertMaterial color="#22252a" /></mesh>
+          {/* grip */}
+          <mesh position={[0, -0.12, -0.02]} rotation={[0.35, 0, 0]} castShadow><boxGeometry args={[0.08, 0.18, 0.1]} /><meshLambertMaterial color="#1a1c20" /></mesh>
+          {/* muzzle flash */}
+          <group ref={muzzle} position={[0, 0.03, 0.42]} visible={false}>
+            <mesh><sphereGeometry args={[0.12, 6, 5]} /><meshBasicMaterial color="#fff1a0" /></mesh>
+            <mesh rotation={[Math.PI / 2, 0, 0]}><coneGeometry args={[0.1, 0.3, 6]} /><meshBasicMaterial color="#ffd23a" /></mesh>
+          </group>
+        </group>
       </group>
 
       {/* Left leg pivot at hip */}

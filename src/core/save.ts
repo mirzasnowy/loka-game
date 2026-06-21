@@ -49,6 +49,9 @@ function snapshot(): SaveShape {
     quests: s.quests,
     activeQuestId: s.activeQuestId,
     runtime: { pos: s.runtime.pos },
+    inventory: s.inventory,
+    ammo: s.ammo,
+    equipped: s.equipped,
   };
 }
 

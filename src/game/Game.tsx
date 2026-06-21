@@ -17,6 +17,7 @@ import TrafficSystem from "@/systems/TrafficSystem";
 import PlayerVehicles from "@/systems/PlayerVehicles";
 import Vendors from "@/systems/Vendors";
 import CombatSystem from "@/systems/CombatSystem";
+import GunSystem from "@/systems/GunSystem";
 import QuestSystem from "@/systems/QuestSystem";
 import InteractionSystem from "@/systems/InteractionSystem";
 import HUD from "./HUD";
@@ -42,10 +43,13 @@ export default function Game() {
     <>
       <Canvas
         shadows
+        flat /* NoToneMapping — render colors at face value so nothing crushes to black */
         dpr={[1, 1.5]}
         camera={{ position: [30, 12, 30], fov: 55, near: 0.5, far: 900 }}
         gl={{ powerPreference: "high-performance", antialias: false }}
       >
+        {/* Bright sky background — guaranteed even before TimeWeather runs */}
+        <color attach="background" args={["#7fc4f0"]} />
         <AdaptiveDpr pixelated />
 
         <Suspense fallback={null}>
@@ -60,6 +64,7 @@ export default function Game() {
           <NPCSystem />
           <TrafficSystem />
           <Vendors />
+          <GunSystem />
           <QuestSystem />
           <InteractionSystem />
 

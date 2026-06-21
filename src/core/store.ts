@@ -44,6 +44,15 @@ export interface PlayerRuntime {
   inVehicleId: string | null;
 }
 
+export type WeaponKind = "fists" | "pistol";
+export interface InvItem {
+  id: string;
+  name: string;
+  icon: string; // emoji for the HUD
+  qty: number;
+  kind: "weapon" | "ammo" | "food" | "misc";
+}
+
 interface GameState {
   booted: boolean;
   paused: boolean;
@@ -67,6 +76,12 @@ interface GameState {
   // combat
   inCombat: boolean;
   enemiesAlive: number;
+
+  // inventory + weapons
+  inventory: InvItem[];
+  ammo: number;
+  equipped: WeaponKind;
+  inventoryOpen: boolean;
 
   // notifications (transient toasts)
   toast: { id: number; text: string } | null;
@@ -99,6 +114,14 @@ interface GameState {
 
   setCombat: (inCombat: boolean, enemiesAlive: number) => void;
 
+  addItem: (item: InvItem) => void;
+  removeItem: (id: string, qty?: number) => void;
+  setEquipped: (w: WeaponKind) => void;
+  toggleInventory: (open?: boolean) => void;
+  fireRound: () => boolean;   // true if a round was chambered + fired
+  reloadMag: () => void;      // refill magazine from reserve ammo
+  addAmmo: (n: number) => void;
+
   notify: (text: string) => void;
   hydrate: (partial: Partial<SaveShape>) => void;
 }
@@ -111,6 +134,9 @@ export interface SaveShape {
   quests: Record<string, QuestProgress>;
   activeQuestId: string | null;
   runtime: Pick<PlayerRuntime, "pos">;
+  inventory?: InvItem[];
+  ammo?: number;
+  equipped?: WeaponKind;
 }
 
 function deriveTimeOfDay(h: number): TimeOfDay {
@@ -121,6 +147,7 @@ function deriveTimeOfDay(h: number): TimeOfDay {
 }
 
 const expForLevel = (lvl: number) => 100 * lvl * lvl;
+const MAG_CAP = 12; // pistol magazine capacity
 
 let toastSeq = 1;
 
@@ -151,6 +178,17 @@ export const useGame = create<GameState>((set, get) => ({
 
   inCombat: false,
   enemiesAlive: 0,
+
+  inventory: [
+    { id: "pistol", name: "Pistol", icon: "🔫", qty: 1, kind: "weapon" },
+    { id: "ammo", name: "Peluru 9mm", icon: "🔩", qty: 48, kind: "ammo" }, // reserve
+    { id: "bakso", name: "Bakso", icon: "🍜", qty: 1, kind: "food" },
+    { id: "es-teh", name: "Es Teh", icon: "🥤", qty: 2, kind: "food" },
+    { id: "hp-kit", name: "Kotak P3K", icon: "💊", qty: 1, kind: "misc" },
+  ],
+  ammo: 12, // rounds currently in the magazine (MAG_CAP = 12)
+  equipped: "fists",
+  inventoryOpen: false,
 
   toast: null,
 
@@ -260,6 +298,57 @@ export const useGame = create<GameState>((set, get) => ({
 
   setCombat: (inCombat, enemiesAlive) => set({ inCombat, enemiesAlive }),
 
+  addItem: (item) =>
+    set((s) => {
+      const existing = s.inventory.find((i) => i.id === item.id);
+      const inventory = existing
+        ? s.inventory.map((i) => (i.id === item.id ? { ...i, qty: i.qty + item.qty } : i))
+        : [...s.inventory, item];
+      const ammo = item.kind === "ammo" ? s.ammo + item.qty : s.ammo;
+      return { inventory, ammo };
+    }),
+  removeItem: (id, qty = 1) =>
+    set((s) => ({
+      inventory: s.inventory
+        .map((i) => (i.id === id ? { ...i, qty: i.qty - qty } : i))
+        .filter((i) => i.qty > 0),
+    })),
+  setEquipped: (equipped) => {
+    set({ equipped });
+    get().notify(equipped === "pistol" ? "Pistol siap 🔫" : "Tangan kosong 👊");
+  },
+  toggleInventory: (open) =>
+    set((s) => ({ inventoryOpen: open ?? !s.inventoryOpen })),
+  fireRound: () => {
+    if (get().ammo <= 0) return false;
+    set((s) => ({ ammo: s.ammo - 1 }));
+    return true;
+  },
+  reloadMag: () => {
+    const s = get();
+    const reserve = s.inventory.find((i) => i.id === "ammo")?.qty ?? 0;
+    const need = MAG_CAP - s.ammo;
+    const take = Math.min(need, reserve);
+    if (take <= 0) {
+      s.notify(reserve <= 0 ? "Peluru habis!" : "Magasin penuh");
+      return;
+    }
+    set((st) => ({
+      ammo: st.ammo + take,
+      inventory: st.inventory.map((i) => (i.id === "ammo" ? { ...i, qty: i.qty - take } : i)).filter((i) => i.qty > 0 || i.kind !== "ammo"),
+    }));
+    s.notify(`Reload (${take} peluru)`);
+  },
+  addAmmo: (n) =>
+    set((s) => {
+      const has = s.inventory.find((i) => i.id === "ammo");
+      return {
+        inventory: has
+          ? s.inventory.map((i) => (i.id === "ammo" ? { ...i, qty: i.qty + n } : i))
+          : [...s.inventory, { id: "ammo", name: "Peluru 9mm", icon: "🔩", qty: n, kind: "ammo" as const }],
+      };
+    }),
+
   notify: (text) => set({ toast: { id: toastSeq++, text } }),
 
   hydrate: (p) =>
@@ -271,8 +360,11 @@ export const useGame = create<GameState>((set, get) => ({
       quests: p.quests ?? s.quests,
       activeQuestId: p.activeQuestId ?? s.activeQuestId,
       runtime: p.runtime?.pos ? { ...s.runtime, pos: p.runtime.pos } : s.runtime,
+      inventory: p.inventory ?? s.inventory,
+      ammo: p.ammo ?? s.ammo,
+      equipped: p.equipped ?? s.equipped,
     })),
 }));
 
-export { deriveTimeOfDay, expForLevel, QUESTS };
+export { deriveTimeOfDay, expForLevel, MAG_CAP, QUESTS };
 export type { QuestDef };

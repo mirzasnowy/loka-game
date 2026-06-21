@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useGame } from "@/core/store";
+import { useGame, type InvItem } from "@/core/store";
 import { input, type Action } from "@/core/input";
-import { QUESTS, expForLevel } from "@/core/store";
+import { QUESTS, expForLevel, MAG_CAP } from "@/core/store";
+import { VENDORS } from "@/data/vendors";
 import Minimap from "./Minimap";
+
+const FOOD = Object.fromEntries(VENDORS.map((v) => [v.food.id, v.food]));
 
 /** Full DOM HUD overlay: stats, time, quest tracker, prompts, toasts, mobile controls. */
 export default function HUD() {
@@ -18,7 +21,87 @@ export default function HUD() {
       <QuestTracker />
       <Prompt />
       <Toast />
+      <WeaponHUD />
       <MobileControls />
+      <InventoryPanel />
+    </div>
+  );
+}
+
+/* ------------------------------- weapon HUD ------------------------------- */
+
+function WeaponHUD() {
+  const equipped = useGame((s) => s.equipped);
+  const ammo = useGame((s) => s.ammo);
+  const reserve = useGame((s) => s.inventory.find((i) => i.id === "ammo")?.qty ?? 0);
+  return (
+    <div style={{ position: "absolute", bottom: 96, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, background: "rgba(0,0,0,0.45)", padding: "6px 14px", borderRadius: 20, fontSize: 15 }}>
+      {equipped === "pistol" ? (
+        <>
+          <span style={{ fontSize: 18 }}>🔫</span>
+          <b style={{ color: ammo > 0 ? "#fff" : "#ff6a6a" }}>{ammo}</b>
+          <span style={{ opacity: 0.6, fontSize: 12 }}>/ {reserve}</span>
+        </>
+      ) : (
+        <><span style={{ fontSize: 18 }}>👊</span><span style={{ fontSize: 12, opacity: 0.8 }}>Tangan kosong</span></>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------- inventory ------------------------------- */
+
+function InventoryPanel() {
+  const open = useGame((s) => s.inventoryOpen);
+  const items = useGame((s) => s.inventory);
+  const equipped = useGame((s) => s.equipped);
+  if (!open) return null;
+
+  const use = (item: InvItem) => {
+    const g = useGame.getState();
+    if (item.kind === "weapon" && item.id === "pistol") {
+      g.setEquipped(equipped === "pistol" ? "fists" : "pistol");
+    } else if (item.id === "hp-kit") {
+      g.heal(60); g.removeItem("hp-kit", 1); g.notify("P3K dipakai (+60 HP)");
+    } else if (item.kind === "food") {
+      const f = FOOD[item.id];
+      if (f) { g.heal(f.heal); g.setStamina(g.player.stamina + f.stamina); }
+      g.removeItem(item.id, 1); g.notify(`Makan ${item.name}`);
+    }
+  };
+
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "auto" }}
+      onPointerDown={(e) => { if (e.target === e.currentTarget) useGame.getState().toggleInventory(false); }}>
+      <div style={{ width: "min(440px, 92vw)", maxHeight: "80vh", overflowY: "auto", background: "rgba(22,26,34,0.97)", borderRadius: 14, padding: 18, border: "1px solid rgba(255,255,255,0.12)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>🎒 Inventaris</div>
+          <button data-ui="1" onPointerDown={() => useGame.getState().toggleInventory(false)}
+            style={{ background: "#c0392b", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700 }}>Tutup ✕</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {items.map((it) => {
+            const actionable = it.kind === "weapon" || it.kind === "food" || it.id === "hp-kit";
+            const label = it.kind === "weapon" ? (equipped === "pistol" ? "Lepas" : "Pasang") : it.id === "hp-kit" ? "Pakai" : it.kind === "food" ? "Makan" : null;
+            return (
+              <div key={it.id} style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 26 }}>{it.icon}</span>
+                  <div style={{ lineHeight: 1.2 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{it.name}</div>
+                    <div style={{ fontSize: 12, opacity: 0.65 }}>x{it.qty}{it.id === "pistol" && equipped === "pistol" ? " · terpasang" : ""}</div>
+                  </div>
+                </div>
+                {actionable && label && (
+                  <button data-ui="1" onPointerDown={() => use(it)}
+                    style={{ background: "#2e7d32", color: "#fff", border: "none", borderRadius: 8, padding: "6px 0", fontWeight: 700, fontSize: 13 }}>{label}</button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ marginTop: 12, fontSize: 11, opacity: 0.55, textAlign: "center" }}>Tombol: F tembak · R isi · Q ganti senjata · I / Tas buka tas</div>
+      </div>
     </div>
   );
 }
@@ -119,6 +202,7 @@ function MobileControls() {
     <>
       <LookPad />
       <Joystick />
+      {/* Combat cluster */}
       <div style={{ position: "absolute", right: 16, bottom: 24, display: "grid", gridTemplateColumns: "60px 60px", gap: 10, pointerEvents: "auto" }}>
         <ActBtn action="kick" label="Tendang" color="#8e24aa" />
         <ActBtn action="punch" label="Pukul" color="#d32f2f" />
@@ -127,6 +211,19 @@ function MobileControls() {
         <ActBtn action="dodge" label="Hindar" color="#00838f" />
         <ActBtn action="interact" label="Aksi (E)" color="#2e7d32" />
       </div>
+      {/* Gun cluster (left of combat) */}
+      <div style={{ position: "absolute", right: 150, bottom: 24, display: "flex", flexDirection: "column", gap: 10, pointerEvents: "auto", alignItems: "center" }}>
+        <ActBtn action="fire" label="Tembak" color="#e53935" big />
+        <div style={{ display: "flex", gap: 8 }}>
+          <ActBtn action="reload" label="Isi" color="#5d4037" small />
+          <ActBtn action="swap" label="Senjata" color="#37474f" small />
+        </div>
+      </div>
+      {/* Inventory button */}
+      <button data-ui="1" onPointerDown={(e) => { e.preventDefault(); input.press("inv"); }}
+        style={{ position: "absolute", left: 12, top: 92, width: 52, height: 52, borderRadius: 12, border: "none", background: "rgba(40,46,58,0.85)", color: "#fff", fontSize: 11, fontWeight: 700, pointerEvents: "auto", touchAction: "none" }}>
+        🎒 Tas
+      </button>
     </>
   );
 }
@@ -159,7 +256,8 @@ function LookPad() {
   );
 }
 
-function ActBtn({ action, label, color }: { action: Action; label: string; color: string }) {
+function ActBtn({ action, label, color, big, small }: { action: Action; label: string; color: string; big?: boolean; small?: boolean }) {
+  const size = big ? 76 : small ? 48 : 60;
   return (
     <button
       data-ui="1"
@@ -167,7 +265,7 @@ function ActBtn({ action, label, color }: { action: Action; label: string; color
         e.preventDefault();
         input.press(action);
       }}
-      style={{ width: 60, height: 60, borderRadius: "50%", border: "none", background: color, color: "#fff", fontSize: 11, fontWeight: 700, opacity: 0.85, touchAction: "none" }}
+      style={{ width: size, height: size, borderRadius: "50%", border: big ? "3px solid rgba(255,255,255,0.4)" : "none", background: color, color: "#fff", fontSize: big ? 13 : small ? 10 : 11, fontWeight: 700, opacity: 0.9, touchAction: "none" }}
     >
       {label}
     </button>

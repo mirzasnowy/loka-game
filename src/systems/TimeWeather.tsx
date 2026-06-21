@@ -2,7 +2,6 @@
 
 import { useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Sky } from "@react-three/drei";
 import {
   DirectionalLight, AmbientLight, HemisphereLight,
   Color, Points, BufferGeometry, Float32BufferAttribute,
@@ -99,15 +98,14 @@ export default function TimeWeather() {
       sun.current.position.copy(sunVec);
       sunColor(h, tmpSun);
       sun.current.color.copy(tmpSun);
-      // Always keep at least 0.5 intensity so no black world
-      sun.current.intensity = Math.max(0.5, (0.3 + daylight * 1.8) * (cloudy ? 0.65 : 1));
+      sun.current.intensity = Math.max(0.6, (0.4 + daylight * 1.2) * (cloudy ? 0.7 : 1));
       sun.current.target.position.set(0, 0, 0);
       sun.current.target.updateMatrixWorld();
     }
 
-    // Ambient — strong floor so shadows never go pitch black
+    // Ambient — high floor so every face keeps its color even in shadow
     if (amb.current) {
-      amb.current.intensity = Math.max(0.55, 0.55 + daylight * 0.7);
+      amb.current.intensity = Math.max(1.0, 1.0 + daylight * 0.6);
     }
 
     // Hemisphere — sky/ground tint for color fill
@@ -115,7 +113,7 @@ export default function TimeWeather() {
       skyColor(h, tmpSky);
       hemi.current.color.copy(tmpSky);
       hemi.current.groundColor.copy(daylight > 0.1 ? GROUND_DAY : GROUND_NIGHT);
-      hemi.current.intensity = Math.max(0.3, 0.3 + daylight * 0.5);
+      hemi.current.intensity = Math.max(0.7, 0.7 + daylight * 0.5);
     }
 
     // Background / fog
@@ -147,22 +145,22 @@ export default function TimeWeather() {
 
   return (
     <>
-      {/* Very strong ambient — guarantees no black world at all */}
-      <ambientLight ref={amb} intensity={1.1} color="#d8eeff" />
+      {/* Very strong flat ambient — every face gets near-full albedo, never black */}
+      <ambientLight ref={amb} intensity={1.5} color="#eaf4ff" />
 
-      {/* Hemisphere: vivid blue sky / bright green ground */}
+      {/* Hemisphere: blue sky fill + green bounce light from the ground */}
       <hemisphereLight
         ref={hemi}
-        args={["#58b0f0", "#4a9030", 0.8]}
+        args={["#bfe0f8", "#6abf4a", 1.1]}
         position={[0, 1, 0]}
       />
 
-      {/* Sun — primary directional, warm */}
+      {/* Sun — primary directional, warm, casts shadows */}
       <directionalLight
         ref={sun}
         position={[80, 120, 40]}
-        intensity={2.0}
-        color="#ffe880"
+        intensity={1.5}
+        color="#fff0c0"
         castShadow
         shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-160}
@@ -173,11 +171,9 @@ export default function TimeWeather() {
         shadow-bias={-0.0004}
       />
 
-      {/* Fill light from opposite side (no dark faces) */}
-      <directionalLight position={[-60, 40, -60]} intensity={0.6} color="#c0d8ff" />
-
-      {/* Sky dome — vivid blue with low turbidity */}
-      <Sky sunPosition={[80, 30, 100]} turbidity={3} rayleigh={1.2} mieCoefficient={0.003} mieDirectionalG={0.8} />
+      {/* Fill lights from the other sides so no face stays dark */}
+      <directionalLight position={[-70, 50, -60]} intensity={0.7} color="#cfe2ff" />
+      <directionalLight position={[0, 30, -90]} intensity={0.5} color="#dfe8ff" />
 
       {/* Rain */}
       <points ref={rain} geometry={rainGeo} visible={false}>

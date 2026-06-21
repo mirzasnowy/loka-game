@@ -72,10 +72,10 @@ function Buildings() {
   return (
     <>
       <instancedMesh ref={bodyRef} args={[undefined, undefined, n]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors emissive="#20242b" emissiveIntensity={0.55} />
       </instancedMesh>
       <instancedMesh ref={roofRef} args={[undefined, undefined, n]} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial vertexColors emissive="#1c2026" emissiveIntensity={0.5} />
       </instancedMesh>
       <instancedMesh ref={winRef} args={[undefined, undefined, n]}>
         <planeGeometry args={[1, 1]} /><meshLambertMaterial vertexColors transparent opacity={0.62} />

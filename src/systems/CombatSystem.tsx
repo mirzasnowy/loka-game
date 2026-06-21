@@ -66,11 +66,21 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
     const g = group.current;
     if (!g) return;
 
+    const now = performance.now();
+
+    // Death: fall backward, then disappear.
     if (entry.dead) {
-      g.visible = false;
+      const dt = (now - (entry.diedAt ?? now)) / 1000;
+      if (dt > 2.4) { g.visible = false; if (bar.current) bar.current.visible = false; return; }
+      g.visible = true;
+      if (bar.current) bar.current.visible = false;
+      const k = Math.min(1, dt / 0.55);
+      g.rotation.x = (-Math.PI / 2) * k; // topple over
+      g.position.set(entry.pos[0], 0.05, entry.pos[2]);
       return;
     }
     g.visible = true;
+    g.rotation.x = 0;
 
     const [px, , pz] = st.runtime.pos;
     pv.set(px, 0, pz);
@@ -97,7 +107,18 @@ function Preman({ uid, spawn }: { uid: string; spawn: PremanSpawn }) {
       }
     }
 
-    g.position.set(entry.pos[0], 0, entry.pos[2]);
+    // Hit flinch: shove back from the player + quick squash.
+    let fx = 0, fz = 0, sc = 1;
+    if (entry.hitAt && now - entry.hitAt < 170) {
+      const k = 1 - (now - entry.hitAt) / 170;
+      const away = ev.clone().sub(pv);
+      const len = away.length() || 1;
+      fx = (away.x / len) * 0.35 * k;
+      fz = (away.z / len) * 0.35 * k;
+      sc = 1 + 0.12 * k;
+    }
+    g.position.set(entry.pos[0] + fx, 0, entry.pos[2] + fz);
+    g.scale.setScalar(sc);
 
     // HP bar faces camera.
     if (bar.current) {
@@ -171,8 +192,10 @@ export default function CombatSystem() {
         const target = best as EnemyEntry;
         const mult = 1 + Math.min(combo.current.count - 1, 4) * 0.15;
         target.hp -= dmg * mult;
+        target.hitAt = now;
         if (target.hp <= 0) {
           target.dead = true;
+          target.diedAt = now;
           addExp(40);
           report("defeat", { target: "preman" });
           notify(`Preman kalah! Combo x${combo.current.count}`);

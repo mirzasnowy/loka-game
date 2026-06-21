@@ -7,7 +7,7 @@
  * consumed once so a tap fires exactly one action.
  */
 
-export type Action = "interact" | "punch" | "kick" | "dodge" | "jump";
+export type Action = "interact" | "punch" | "kick" | "dodge" | "jump" | "fire" | "reload" | "swap" | "inv";
 
 class InputState {
   move = { x: 0, y: 0 }; // x: strafe (-1..1), y: forward (-1..1)
@@ -60,6 +60,10 @@ class InputState {
       if (e.code === "KeyJ") this.press("punch");
       if (e.code === "KeyK") this.press("kick");
       if (e.code === "ControlLeft") this.press("dodge");
+      if (e.code === "KeyF") this.press("fire");
+      if (e.code === "KeyR") this.press("reload");
+      if (e.code === "KeyQ") this.press("swap");
+      if (e.code === "KeyI" || e.code === "Tab") { e.preventDefault(); this.press("inv"); }
     };
     const up = (e: KeyboardEvent) => {
       keys[e.code] = false;

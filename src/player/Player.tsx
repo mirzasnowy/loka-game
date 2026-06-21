@@ -100,6 +100,13 @@ export default function Player() {
       input.iframeUntil = performance.now() + DODGE_IFRAME_MS;
     }
 
+    // Weapon swap + inventory toggle.
+    if (input.consume("swap")) {
+      const g = useGame.getState();
+      g.setEquipped(g.equipped === "pistol" ? "fists" : "pistol");
+    }
+    if (input.consume("inv")) useGame.getState().toggleInventory();
+
     // Stamina drain/regen.
     useGame.getState().setStamina(st.player.stamina + (running ? -14 : 8) * delta);
 
@@ -108,6 +115,7 @@ export default function Player() {
     avatar.running = running;
     avatar.grounded = grounded;
     avatar.blocking = input.block;
+    avatar.weapon = useGame.getState().equipped;
 
     // Face movement direction.
     if (moving) {

@@ -22,5 +22,7 @@ export interface EnemyEntry {
   maxHp: number;
   pos: [number, number, number];
   dead: boolean;
+  hitAt?: number;  // performance.now() of last hit — drives flinch flash
+  diedAt?: number; // performance.now() of death — drives fall animation
 }
 export const enemies = new Map<string, EnemyEntry>();

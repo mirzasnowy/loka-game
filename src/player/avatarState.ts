@@ -12,4 +12,6 @@ export const avatar = {
   kickAt: 0,       // performance.now() of last kick
   jumpAt: 0,       // performance.now() of last jump
   hurtAt: 0,       // performance.now() of last damage taken (flinch)
+  fireAt: 0,       // performance.now() of last gunshot (recoil + muzzle flash)
+  weapon: "fists" as "fists" | "pistol",
 };
