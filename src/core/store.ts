@@ -331,19 +331,10 @@ export const useGame = create<GameState>((set, get) => ({
     return true;
   },
   reloadMag: () => {
-    const s = get();
-    const reserve = s.inventory.find((i) => i.id === "ammo")?.qty ?? 0;
-    const need = MAG_CAP - s.ammo;
-    const take = Math.min(need, reserve);
-    if (take <= 0) {
-      s.notify(reserve <= 0 ? "Peluru habis!" : "Magasin penuh");
-      return;
-    }
-    set((st) => ({
-      ammo: st.ammo + take,
-      inventory: st.inventory.map((i) => (i.id === "ammo" ? { ...i, qty: i.qty - take } : i)).filter((i) => i.qty > 0 || i.kind !== "ammo"),
-    }));
-    s.notify(`Reload (${take} peluru)`);
+    // Reserve ammo is unlimited for now — reload always tops the magazine up.
+    if (get().ammo >= MAG_CAP) { get().notify("Magasin penuh"); return; }
+    set({ ammo: MAG_CAP });
+    get().notify("Reload 🔁");
   },
   addAmmo: (n) =>
     set((s) => {

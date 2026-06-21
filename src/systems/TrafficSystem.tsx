@@ -170,7 +170,9 @@ export default function TrafficSystem() {
           avatar.knockX = Math.sin(rotY) * 10;
           avatar.knockZ = Math.cos(rotY) * 10;
           avatar.knockAt = now2;
-          hitCd.current = 1.3;
+          avatar.knockdownAt = now2; // ragdoll fall + get up
+          avatar.sitting = false;
+          hitCd.current = 1.6;
           st.notify("Tertabrak kendaraan! 🚗💥");
         }
       }
@@ -199,8 +201,17 @@ export default function TrafficSystem() {
         winDummy.scale.set(k.w * 0.92, k.h * (bus ? 0.6 : 0.42), k.l * (bus ? 0.9 : 0.5));
         winDummy.updateMatrix();
       } else {
-        cabDummy.position.set(0, HIDE, 0); cabDummy.scale.setScalar(0.001); cabDummy.updateMatrix();
-        winDummy.position.set(0, HIDE, 0); winDummy.scale.setScalar(0.001); winDummy.updateMatrix();
+        // motorcycle: front fairing (cab slot) + windscreen (win slot) → real scooter shape
+        const fwdX = Math.sin(rotY), fwdZ = Math.cos(rotY);
+        const fx = fwdX * k.l * 0.34, fz = fwdZ * k.l * 0.34;
+        cabDummy.position.set(x + fx, bodyY + 0.34, z + fz);
+        cabDummy.rotation.set(0, rotY, 0);
+        cabDummy.scale.set(k.w * 0.92, k.h * 1.25, k.l * 0.26);
+        cabDummy.updateMatrix();
+        winDummy.position.set(x + fx, bodyY + 0.78, z + fz);
+        winDummy.rotation.set(0, rotY, 0);
+        winDummy.scale.set(k.w * 0.8, k.h * 0.7, 0.05);
+        winDummy.updateMatrix();
       }
       cabRef.current.setMatrixAt(i, cabDummy.matrix);
       cabRef.current.setColorAt(i, cabCol.set(k.cab));

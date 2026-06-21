@@ -9,7 +9,7 @@ import { input } from "@/core/input";
 import { view } from "@/core/view";
 import { drivables } from "@/systems/registries";
 import PlayerModel from "./PlayerModel";
-import { avatar } from "./avatarState";
+import { avatar, KNOCKDOWN_MS } from "./avatarState";
 
 /**
  * Single control + camera authority. On foot it drives the capsule rigidbody;
@@ -91,11 +91,18 @@ export default function Player() {
     const v = b.linvel();
     const p = b.translation();
 
+    // Stand up if you try to move while sitting.
+    if (avatar.sitting && moving) avatar.sitting = false;
+    const downed = avatar.knockdownAt > 0 && performance.now() - avatar.knockdownAt < KNOCKDOWN_MS;
+    const frozen = downed || avatar.sitting;
+
     // Vehicle knockback (set by TrafficSystem) — overrides movement this frame.
     const knocked = performance.now() - avatar.knockAt < 70;
     if (knocked) {
       b.setLinvel({ x: avatar.knockX, y: 3.5, z: avatar.knockZ }, true);
       avatar.knockAt = 0;
+    } else if (frozen) {
+      b.setLinvel({ x: 0, y: v.y, z: 0 }, true); // can't move while down/sitting
     } else {
       b.setLinvel({ x: moveDir.x * speed, y: v.y, z: moveDir.z * speed }, true);
     }
@@ -111,7 +118,7 @@ export default function Player() {
     const hit = world.castRay(groundRay.current, 1.0, true, undefined, undefined, undefined, b);
     const grounded = hit !== null;
 
-    if (input.consume("jump") && grounded && jumpCooldown.current <= 0 && !knocked) {
+    if (input.consume("jump") && grounded && jumpCooldown.current <= 0 && !knocked && !frozen) {
       b.setLinvel({ x: v.x, y: JUMP, z: v.z }, true);
       avatar.jumpAt = performance.now();
       jumpCooldown.current = 0.45;
@@ -139,8 +146,8 @@ export default function Player() {
     useGame.getState().setStamina(st.player.stamina + (running ? -14 : 8) * delta);
 
     // Feed the animation rig.
-    avatar.speed = moving ? speed : 0;
-    avatar.running = running;
+    avatar.speed = moving && !frozen ? speed : 0;
+    avatar.running = running && !frozen;
     avatar.grounded = grounded;
     avatar.blocking = input.block;
     avatar.weapon = useGame.getState().equipped;

@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D, Color, MathUtils } from "three";
 import { useGame, MAX_NPCS, npcPositions } from "@/core/store";
 import { BLOCK, SIDEWALK_OFF, snapToSidewalk } from "@/world/grid";
+import { npcHp, npcFleeUntil, npcHitAt, npcDead } from "./npcState";
 
 const SPAWN_RING = 70;
 const DESPAWN = 120;
@@ -116,6 +117,31 @@ export default function NPCSystem() {
         continue;
       }
 
+      // Dead → hide, then respawn fresh elsewhere after a short delay.
+      if (npcDead[i]) {
+        if (performance.now() - npcHitAt[i] > 1400) {
+          spawnNear(a, px, pz); npcDead[i] = 0; npcHp[i] = 30; npcFleeUntil[i] = 0;
+        } else {
+          npcPositions[i * 2] = 99999; npcPositions[i * 2 + 1] = 99999;
+          dummy.position.set(0, HIDE, 0); dummy.scale.setScalar(0.0001); dummy.updateMatrix();
+          headRef.current.setMatrixAt(i, dummy.matrix);
+          bodyRef.current.setMatrixAt(i, dummy.matrix);
+          legsRef.current.setMatrixAt(i, dummy.matrix);
+          armLRef.current.setMatrixAt(i, dummy.matrix);
+          armRRef.current.setMatrixAt(i, dummy.matrix);
+          continue;
+        }
+      }
+
+      const fleeing = performance.now() < npcFleeUntil[i];
+      if (fleeing) {
+        // run directly away from the player along the current sidewalk axis
+        a.state = "walk";
+        const playerAlong = a.axis === "z" ? pz : px;
+        a.dir = a.along >= playerAlong ? 1 : -1;
+      }
+      const spd = fleeing ? a.speed * 2.5 : a.speed;
+
       // current position
       let sideOffset = a.side * SIDEWALK_OFF;
       let [x, z] = posOf(a.axis, a.line, sideOffset, a.along);
@@ -135,7 +161,7 @@ export default function NPCSystem() {
         if (t >= 1) { a.side = (-a.crossFrom) as 1 | -1; a.state = "walk"; a.timer = 2 + Math.random() * 4; }
       } else {
         // walk
-        a.along += a.speed * a.dir * delta;
+        a.along += spd * a.dir * delta;
         [x, z] = posOf(a.axis, a.line, a.side * SIDEWALK_OFF, a.along);
 
         // at an intersection? (along near a multiple of BLOCK)

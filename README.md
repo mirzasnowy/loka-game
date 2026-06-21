@@ -1,88 +1,72 @@
-# Loka — Open World Indonesia
+# Loka — Open World Indonesia 🇮🇩
 
-Stylized low-poly open-world Jakarta. Next.js + React Three Fiber + Three.js +
-Rapier + Zustand. Built primitives-first so every placeholder is replaceable by
-real GLB art with **zero gameplay-code changes**.
+Stylized low-poly open-world **Jakarta**. Drive through Sudirman, brawl with
+preman, ride a Honda Beat past Monas, eat bakso from a kaki-lima — all in the
+browser.
 
-## Run
+## ▶️ Play now
 
-```bash
-npm install
-npm run dev        # http://localhost:3000
-npm run build      # production build
-npm run typecheck  # tsc --noEmit
-npm test           # gameplay logic self-check (no browser needed)
-```
+**https://loka.mirzakur.xyz**
 
-Target: 30 FPS on Android 4GB. Capped DPR + AdaptiveDpr, instanced crowds/
-traffic/buildings, spawn-around-player streaming, no antialias, kinematic agents.
+Works on desktop and mobile (touch controls). No install.
+
+---
+
+## Tech
+
+Next.js 15 (static export) · React Three Fiber · Three.js · @react-three/rapier
+(physics) · Zustand (state) · TypeScript. Primitives-first: every placeholder is
+swappable for real GLB art with **zero gameplay-code changes** (see
+`src/core/assetRegistry.tsx`).
+
+## Features
+
+- **Open city** on a real road grid — cars stay in lanes, pedestrians on
+  sidewalks and cross at zebra crossings, working **traffic lights**.
+- **Third- & first-person** camera (toggle TPS/FPS), full 360° look on mouse + touch.
+- **Melee combos** — jab / cross / hook / uppercut / kick with an on-screen
+  combo counter; **gun** with auto-aim, tracers, recoil, muzzle flash and reload.
+- **NPCs** react: pedestrians flee when hit and can go down; preman fight back.
+- **Vehicles** — Honda Beat/Vario/NMAX, Avanza, Innova, pickup, TransJakarta;
+  walk up and an **Enter** prompt appears automatically.
+- Get **run over** by traffic → knockback, ragdoll knockdown + get-up, red screen.
+- **Sit** on park benches; riding animation on motorbikes.
+- **Day/night + weather** with rain and **lightning**, volumetric clouds, dynamic sky.
+- Landmarks: precise **Monas**, KRL station, bus haltes, Indomaret/Alfamart,
+  street-food carts (bakso/somay/cilok/es-teh/nasi goreng).
+- Quests, economy (Rupiah), inventory, leveling, localStorage save.
 
 ## Controls
 
-- **Move**: WASD / arrows / on-screen joystick
-- **Run**: Shift · **Jump**: Space · **Dodge** (i-frames): Ctrl
-- **Look**: drag mouse / screen
-- **Interact** (buy food, enter/exit vehicle): E
-- **Punch**: J / LMB · **Kick**: K · **Block**: hold B / RMB
-- Mobile: full on-screen joystick + action buttons.
+| Action | Desktop | Mobile |
+|---|---|---|
+| Move | WASD / arrows | left joystick |
+| Look | drag mouse | drag right side |
+| Run | Shift | — |
+| Jump | Space | Lompat |
+| Punch / combo | J | Pukul |
+| Kick | K | (combo) |
+| Block / Dodge | B / Ctrl | Tangkis / Hindar |
+| Fire / Reload | F / R | Tembak / Isi |
+| Swap weapon | Q | Senjata |
+| Toggle FPS/TPS | V | 👁 |
+| Interact (enter car, buy, sit) | E | Aksi |
+| Inventory | I / Tab | 🎒 Tas |
 
-## Architecture
+## Develop
 
-The seam that makes the whole thing future-proof is the **AssetRegistry**
-(`src/core/assetRegistry.tsx`). Gameplay never names a mesh or a file — it
-renders `<Asset id="monas" />`. To ship real art, drop a file in
-`public/assets/` and add one line:
-
-```ts
-registerAsset("monas", { placeholder: Monas, glb: "/assets/monas.glb" });
+```bash
+npm install
+npm run dev      # http://localhost:3000
+npm run build    # static export → ./out
+npm test         # gameplay logic self-checks
 ```
 
-No other file changes. Same for `player`, every vehicle, NPC and prop.
+## Deploy (CI/CD)
 
-```
-src/
-  core/        assetRegistry · store (Zustand, ECS-ish) · input · save
-  data/        quests · vehicles · vendors · drivables   ← data-driven content
-  world/       worldConfig · proc (city gen) · World · placeholders
-  player/      Player  (single control + camera authority: on-foot & driving)
-  systems/     TimeWeather · NPC · Traffic · PlayerVehicles · Combat
-               Quest · Interaction · Vendors · registries
-  game/        Game (mounts everything) · HUD · Minimap
-test/          logic.test.ts
-```
+Pushing to `main` on GitHub auto-builds and redeploys to **Cloudflare Pages**
+(project `loka-game`, custom domain `loka.mirzakur.xyz`). No manual step.
 
-**Design rules in force**
-- Data-driven: districts, quests, vehicles, vendors, vehicle placements are
-  plain serializable arrays — editable/loadable from JSON/CDN later.
-- Decoupled systems: they read/write the central store + runtime registries
-  (`systems/registries.ts`) instead of holding refs to each other.
-- Single input layer (`core/input.ts`): keyboard, mouse and touch all feed one
-  place; one-shot actions are edge-triggered and consumed once.
+---
 
-## What works now (playable)
-
-- Procedural Jakarta from the reference: green/tan ground, north coastline,
-  road grid, instanced skyline clustered by district (skyscrapers at Sudirman/
-  HI → kampung at the edges), Monas, district labels.
-- Third-person player (walk/run/jump/dodge) on Rapier physics, stamina drain.
-- Day/night clock + weather (clear/cloudy/rain) driving sun, ambient, sky, fog
-  and rain.
-- Living city: pooled instanced pedestrians (schedule-aware density) and grid
-  traffic obeying a 2-phase traffic signal — both spawn/despawn around player.
-- Drivable vehicles (Beat/Vario/NMAX/Avanza/Innova/Pickup/TransJakarta) with
-  enter/exit and simplified physics.
-- Combat (Arkham-lite): punch/kick/block/dodge/combo vs preman with AI + HP.
-- Data-driven quests (main/side/delivery) with reach/buy/defeat/deliver
-  objectives, rewards, leveling.
-- Economy: rupiah, street vendors (bakso/cilok/siomay/es teh/nasi goreng)
-  selling food that heals.
-- Minimap with POIs, vendors, vehicles, enemies, quest marker.
-- Save: localStorage autosave + restore (cloud-save seam in `core/save.ts`).
-
-## Roadmap (next milestones, not yet built)
-
-These hang off the existing seams without touching gameplay code:
-GLB art pass · animation/customization · police/escort quests · mosque + adzan
-ambient + audio system · businesses/economy depth · fast travel · weather VFX
-depth · LOD splits per archetype. Each is a new `system` + `data` entry + a few
-`registerAsset` lines.
+Made with [Claude Code](https://claude.com/claude-code).

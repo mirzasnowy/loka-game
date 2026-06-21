@@ -5,6 +5,13 @@ import { useGame, type InteractTarget } from "@/core/store";
 import { input } from "@/core/input";
 import { VENDOR_PLACEMENTS, VENDORS } from "@/data/vendors";
 import { drivables } from "./registries";
+import { avatar } from "@/player/avatarState";
+
+// Park benches (matches World.MonasPark) — sit-able seats.
+const SEATS: [number, number][] = Array.from({ length: 12 }, (_, k) => {
+  const a = (k / 12) * Math.PI * 2 + 0.26, r = 33;
+  return [Math.cos(a) * r, Math.sin(a) * r];
+});
 
 /**
  * Proximity interaction + economy. Finds the nearest interactable (vendor or
@@ -22,6 +29,14 @@ export default function InteractionSystem() {
     const st = useGame.getState();
     if (st.paused) return;
     const [px, , pz] = st.runtime.pos;
+
+    // While sitting, the only interaction is to stand up.
+    if (avatar.sitting) {
+      const target: InteractTarget = { id: "seat", kind: "poi", label: "Berdiri (E)", pos: [px, 0, pz] };
+      if (st.interact?.label !== target.label) setInteract(target);
+      if (input.consume("interact")) avatar.sitting = false;
+      return;
+    }
 
     // While driving, the only interaction is to exit.
     if (st.runtime.inVehicleId) {
@@ -69,6 +84,15 @@ export default function InteractionSystem() {
       }
     });
 
+    // Benches (sit)
+    for (const [sx, sz] of SEATS) {
+      const d = Math.hypot(px - sx, pz - sz);
+      if (d < bestDist) {
+        bestDist = d;
+        best = { id: `seat-${sx.toFixed(0)}-${sz.toFixed(0)}`, kind: "poi", label: "Duduk (E)", pos: [sx, 0, sz] };
+      }
+    }
+
     if (best?.id !== st.interact?.id || best?.kind !== st.interact?.kind) setInteract(best);
 
     if (best && input.consume("interact")) {
@@ -76,6 +100,9 @@ export default function InteractionSystem() {
       const target = best as InteractTarget;
       if (target.kind === "vehicle") {
         g.setInVehicle(target.id);
+      } else if (target.kind === "poi") {
+        avatar.sitting = true;
+        g.notify("Duduk 🪑");
       } else if (target.kind === "vendor") {
         const v = VENDORS.find((x) => x.id === target.id)!;
         if (g.addMoney(-v.food.price)) {

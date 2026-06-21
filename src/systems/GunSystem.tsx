@@ -7,6 +7,7 @@ import { useGame } from "@/core/store";
 import { input } from "@/core/input";
 import { enemies, type EnemyEntry } from "./registries";
 import { avatar } from "@/player/avatarState";
+import { hitNpcNear } from "./npcState";
 
 /**
  * Pistol shooting. Fire (F / mobile button) chambers a round, plays the recoil +
@@ -51,58 +52,58 @@ export default function GunSystem() {
     // Fire
     if (input.consume("fire")) {
       if (!armed) {
-        // not holding the gun — auto-equip for convenience
-        st.setEquipped("pistol");
-      } else if (!st.fireRound()) {
-        st.notify("Magasin kosong — Reload (R)");
+        st.setEquipped("pistol"); // auto-equip on first shot
       } else {
-        const now = performance.now();
-        avatar.fireAt = now;
+        if (st.ammo <= 0) st.reloadMag(); // seamless auto-reload when empty
+        if (st.fireRound()) {
+          const now = performance.now();
+          avatar.fireAt = now;
 
-        const [px, py, pz] = st.runtime.pos;
-        const yaw = st.runtime.facing;
-        fwd.set(Math.sin(yaw), 0, Math.cos(yaw)).normalize();
-        muzzle.set(px + fwd.x * 0.6, py + 1.4, pz + fwd.z * 0.6);
+          const [px, py, pz] = st.runtime.pos;
+          const yaw = st.runtime.facing;
+          fwd.set(Math.sin(yaw), 0, Math.cos(yaw)).normalize();
+          muzzle.set(px + fwd.x * 0.6, py + 1.4, pz + fwd.z * 0.6);
 
-        // auto-aim: nearest enemy in forward cone within range
-        let best: EnemyEntry | null = null;
-        let bestScore = -Infinity;
-        enemies.forEach((e) => {
-          if (e.dead) return;
-          toE.set(e.pos[0] - px, 0, e.pos[2] - pz);
-          const d = toE.length();
-          if (d > RANGE) return;
-          toE.normalize();
-          const dot = toE.x * fwd.x + toE.z * fwd.z;
-          if (dot < CONE) return;
-          const score = dot - d / RANGE; // prefer aligned + close
-          if (score > bestScore) { bestScore = score; best = e; }
-        });
+          // auto-aim: nearest preman in the forward cone within range
+          let best: EnemyEntry | null = null;
+          let bestScore = -Infinity;
+          enemies.forEach((e) => {
+            if (e.dead) return;
+            toE.set(e.pos[0] - px, 0, e.pos[2] - pz);
+            const d = toE.length();
+            if (d > RANGE) return;
+            toE.normalize();
+            const dot = toE.x * fwd.x + toE.z * fwd.z;
+            if (dot < CONE) return;
+            const score = dot - d / RANGE;
+            if (score > bestScore) { bestScore = score; best = e; }
+          });
 
-        if (best) {
-          const e = best as EnemyEntry;
-          hit.set(e.pos[0], 1.1, e.pos[2]);
-          e.hp -= DMG;
-          e.hitAt = now;
-          if (e.hp <= 0 && !e.dead) {
-            e.dead = true;
-            e.diedAt = now;
-            st.addExp(45);
-            st.reportEvent("defeat", { target: "preman" });
-            st.notify("Preman tertembak! 🎯");
+          if (best) {
+            const e = best as EnemyEntry;
+            hit.set(e.pos[0], 1.1, e.pos[2]);
+            e.hp -= DMG;
+            e.hitAt = now;
+            st.triggerHitMarker();
+            if (e.hp <= 0 && !e.dead) {
+              e.dead = true; e.diedAt = now;
+              st.addExp(45);
+              st.reportEvent("defeat", { target: "preman" });
+              st.notify("Preman tertembak! 🎯");
+            }
           } else {
-            st.notify("Kena! 💥");
+            // no preman — try to hit an ordinary pedestrian
+            const ni = hitNpcNear(px, pz, fwd.x, fwd.z, RANGE, DMG);
+            if (ni >= 0) { st.triggerHitMarker(); hit.set(px + fwd.x * 8, 1.1, pz + fwd.z * 8); }
+            else hit.copy(muzzle).addScaledVector(fwd, RANGE);
           }
-        } else {
-          hit.copy(muzzle).addScaledVector(fwd, RANGE);
-        }
 
-        // spawn tracer
-        const t = tracers.current[tIdx.current];
-        tIdx.current = (tIdx.current + 1) % TRACER_MAX;
-        t.from.copy(muzzle);
-        t.to.copy(hit);
-        t.until = now + TRACER_MS;
+          const t = tracers.current[tIdx.current];
+          tIdx.current = (tIdx.current + 1) % TRACER_MAX;
+          t.from.copy(muzzle);
+          t.to.copy(hit);
+          t.until = now + TRACER_MS;
+        }
       }
     }
 

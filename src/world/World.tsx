@@ -259,33 +259,45 @@ function Trees() {
   const bushRef  = useRef<InstancedMesh>(null!);
   const data = useMemo(() => generateCity().trees, []);
 
+  // per-variant silhouette: [trunkH, spread, height, taper]
+  // 0 round, 1 tall oak, 2 broad, 3 palm (tall thin), 4 bush (short wide)
+  const SHAPE = [
+    { th: 2.8, sp: 1.0, hi: 1.0 },
+    { th: 3.6, sp: 0.85, hi: 1.25 },
+    { th: 2.4, sp: 1.25, hi: 0.9 },
+    { th: 4.6, sp: 0.62, hi: 0.8 },
+    { th: 1.4, sp: 1.35, hi: 0.7 },
+  ];
+
   useLayoutEffect(() => {
     data.forEach((t, i) => {
       const s = t.scale;
-      const th = 2.8 * s, tr = 0.20 * s, v = t.variant % 5;
+      const v = t.variant % 5;
+      const sh = SHAPE[v];
+      const th = sh.th * s, tr = 0.20 * s * (v === 3 ? 0.7 : 1);
 
       tmp.position.set(t.x, th / 2, t.z); tmp.rotation.set(0, 0, 0);
       tmp.scale.set(tr * 2, th, tr * 2); tmp.updateMatrix();
       trunkRef.current.setMatrixAt(i, tmp.matrix);
-      trunkRef.current.setColorAt(i, tmpColor.set("#6b4018"));
+      trunkRef.current.setColorAt(i, tmpColor.set(v === 3 ? "#8a6a3a" : "#6b4018"));
 
-      tmp.position.set(t.x, th + 1.1 * s, t.z);
-      tmp.scale.set(2.6 * s, 1.8 * s, 2.6 * s); tmp.updateMatrix();
+      tmp.position.set(t.x, th + 1.1 * s * sh.hi, t.z);
+      tmp.scale.set(2.6 * s * sh.sp, 1.8 * s * sh.hi, 2.6 * s * sh.sp); tmp.updateMatrix();
       botRef.current.setMatrixAt(i, tmp.matrix);
       botRef.current.setColorAt(i, tmpColor.set(CANOPY_BOT[v]));
 
-      tmp.position.set(t.x, th + 2.4 * s, t.z);
-      tmp.scale.set(2.1 * s, 1.7 * s, 2.1 * s); tmp.updateMatrix();
+      tmp.position.set(t.x, th + 2.4 * s * sh.hi, t.z);
+      tmp.scale.set(2.1 * s * sh.sp, 1.7 * s * sh.hi, 2.1 * s * sh.sp); tmp.updateMatrix();
       midRef.current.setMatrixAt(i, tmp.matrix);
       midRef.current.setColorAt(i, tmpColor.set(CANOPY_MID[v]));
 
-      tmp.position.set(t.x, th + 3.5 * s, t.z);
-      tmp.scale.set(1.4 * s, 1.4 * s, 1.4 * s); tmp.updateMatrix();
+      tmp.position.set(t.x, th + 3.5 * s * sh.hi, t.z);
+      tmp.scale.set(1.4 * s * sh.sp, 1.4 * s * sh.hi, 1.4 * s * sh.sp); tmp.updateMatrix();
       topRef.current.setMatrixAt(i, tmp.matrix);
       topRef.current.setColorAt(i, tmpColor.set(CANOPY_TOP[v]));
 
       tmp.position.set(t.x + 0.5 * s, 0.4 * s, t.z + 0.35 * s);
-      tmp.scale.setScalar(0.7 * s); tmp.updateMatrix();
+      tmp.scale.setScalar(0.7 * s * sh.sp); tmp.updateMatrix();
       bushRef.current.setMatrixAt(i, tmp.matrix);
       bushRef.current.setColorAt(i, tmpColor.set("#1d7034"));
     });
@@ -641,6 +653,12 @@ export default function World() {
       <Gerobaks />
       <TrafficLights />
 
+      {/* Monas solid colliders so the player stands on the base, never sinks in */}
+      <RigidBody type="fixed" colliders={false}>
+        <CuboidCollider args={[19, 1.4, 19]} position={[0, 1.4, 0]} />
+        <CuboidCollider args={[11.5, 6, 11.5]} position={[0, 7, 0]} />
+        <CuboidCollider args={[4, 60, 4]} position={[0, 67, 0]} />
+      </RigidBody>
       <Asset id="monas" position={[0, 0, 0]} />
       <DistrictLabels />
     </group>

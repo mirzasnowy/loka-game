@@ -20,4 +20,8 @@ export const avatar = {
   knockAt: 0,
   knockX: 0,
   knockZ: 0,
+  // knockdown/ragdoll: fall, lie, then get back up (~2.4s)
+  knockdownAt: 0,
+  sitting: false,
 };
+export const KNOCKDOWN_MS = 2400;

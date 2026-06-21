@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, MathUtils } from "three";
-import { avatar } from "./avatarState";
+import { avatar, KNOCKDOWN_MS } from "./avatarState";
 
 /**
  * Articulated hero with real limb animation: idle breathing, walk, run (faster +
@@ -20,6 +20,7 @@ const SHOE = "#eef0f4";
 const PACK = "#3a4a5a";
 
 export default function PlayerModel() {
+  const rootG = useRef<Group>(null!);
   const bodyG = useRef<Group>(null!);
   const armL  = useRef<Group>(null!);
   const armR  = useRef<Group>(null!);
@@ -74,28 +75,34 @@ export default function PlayerModel() {
     armL.current.rotation.z = 0.12; // slight outward
     armR.current.rotation.z = -0.12;
 
-    // PUNCH — jab, hook, uppercut
-    const pt = (now - avatar.punchAt) / (avatar.comboCount >= 3 ? 350 : 250);
+    // PUNCH — jab(1), cross(2), hook(3), uppercut(4)
+    const pt = (now - avatar.punchAt) / (avatar.comboCount >= 4 ? 360 : 260);
     if (pt >= 0 && pt < 1) {
       const k = Math.sin(pt * Math.PI);
-      if (avatar.comboCount === 1) {
-        // Jab (right arm forward)
+      const m = avatar.comboCount;
+      if (m === 1) {
+        // Jab — quick right straight
         armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -1.7, k);
-        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -0.7, k * 0.6); // guard
-        bodyG.current.rotation.y = MathUtils.lerp(0, -0.35, k);
-      } else if (avatar.comboCount === 2) {
-        // Hook (left arm swinging from side)
-        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -1.4, k);
-        armL.current.rotation.z = MathUtils.lerp(armL.current.rotation.z, -1.0, k);
-        armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -0.7, k * 0.6); // guard
-        bodyG.current.rotation.y = MathUtils.lerp(0, 0.45, k);
+        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -0.7, k * 0.6);
+        bodyG.current.rotation.y = MathUtils.lerp(0, -0.3, k);
+      } else if (m === 2) {
+        // Cross — powerful left straight with hip turn
+        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -1.8, k);
+        armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -0.7, k * 0.6);
+        bodyG.current.rotation.y = MathUtils.lerp(0, 0.4, k);
+      } else if (m === 3) {
+        // Hook — left arm swings horizontally
+        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -1.3, k);
+        armL.current.rotation.z = MathUtils.lerp(armL.current.rotation.z, -1.1, k);
+        armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -0.7, k * 0.6);
+        bodyG.current.rotation.y = MathUtils.lerp(0, 0.5, k);
       } else {
-        // Uppercut (right arm scooping up, jump slightly)
+        // Uppercut — right arm scoops up + little hop
         armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -2.4, k);
         armR.current.rotation.z = MathUtils.lerp(armR.current.rotation.z, 0.4, k);
-        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -0.7, k * 0.6); // guard
+        armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -0.7, k * 0.6);
         bodyG.current.rotation.y = MathUtils.lerp(0, -0.2, k);
-        bodyG.current.position.y += k * 0.15; // little hop
+        bodyG.current.position.y += k * 0.15;
       }
     } else {
       bodyG.current.rotation.y = MathUtils.lerp(bodyG.current.rotation.y, 0, sm);
@@ -146,10 +153,32 @@ export default function PlayerModel() {
 
     bodyG.current.rotation.x = lean.current;
     bodyG.current.position.y = idleBob;
+
+    // KNOCKDOWN (ragdoll-lite): fall back → lie a moment → get up.
+    const kd = now - avatar.knockdownAt;
+    if (avatar.knockdownAt > 0 && kd < KNOCKDOWN_MS) {
+      const p = kd / KNOCKDOWN_MS;
+      let tilt: number;
+      if (p < 0.18) tilt = (-Math.PI / 2) * (p / 0.18);          // fall
+      else if (p < 0.72) tilt = -Math.PI / 2;                    // lie
+      else tilt = (-Math.PI / 2) * (1 - (p - 0.72) / 0.28);      // get up
+      rootG.current.rotation.x = tilt;
+      rootG.current.position.y = 0;
+    } else {
+      rootG.current.rotation.x = MathUtils.lerp(rootG.current.rotation.x, 0, sm);
+      if (avatar.sitting) {
+        // sit pose: bend hips/knees and drop slightly onto the seat
+        legL.current.rotation.x = MathUtils.lerp(legL.current.rotation.x, -1.45, sm);
+        legR.current.rotation.x = MathUtils.lerp(legR.current.rotation.x, -1.45, sm);
+        rootG.current.position.y = MathUtils.lerp(rootG.current.position.y, -0.35, sm);
+      } else {
+        rootG.current.position.y = MathUtils.lerp(rootG.current.position.y, 0, sm);
+      }
+    }
   });
 
   return (
-    <group>
+    <group ref={rootG}>
       {/* Body (torso + head + pack) */}
       <group ref={bodyG}>
         {/* Head */}

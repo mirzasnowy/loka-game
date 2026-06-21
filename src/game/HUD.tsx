@@ -6,6 +6,7 @@ import { input, type Action } from "@/core/input";
 import { QUESTS, expForLevel, MAG_CAP } from "@/core/store";
 import { VENDORS } from "@/data/vendors";
 import { avatar } from "@/player/avatarState";
+import { combat } from "@/systems/combatState";
 import Minimap from "./Minimap";
 
 const FOOD = Object.fromEntries(VENDORS.map((v) => [v.food.id, v.food]));
@@ -25,8 +26,32 @@ export default function HUD() {
       <WeaponHUD />
       <Crosshair />
       <DamageVignette />
+      <ComboCounter />
       <MobileControls />
       <InventoryPanel />
+    </div>
+  );
+}
+
+/** Big combo readout that pops on each landed hit and fades (polls combatState). */
+function ComboCounter() {
+  const [s, setS] = useState<{ n: number; move: string; op: number }>({ n: 0, move: "", op: 0 });
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const dt = performance.now() - combat.comboAt;
+      setS({ n: combat.comboCount, move: combat.lastMove, op: dt < 900 ? 1 : dt < 1300 ? 1 - (dt - 900) / 400 : 0 });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  if (s.op <= 0.01 || s.n < 2) return null;
+  const scale = 1 + Math.min(s.n, 8) * 0.06;
+  return (
+    <div style={{ position: "absolute", top: "32%", left: "50%", transform: `translate(-50%,-50%) scale(${scale})`, opacity: s.op, pointerEvents: "none", textAlign: "center" }}>
+      <div style={{ fontSize: 40, fontWeight: 900, color: "#ffd24a", textShadow: "0 2px 8px #000, 0 0 18px rgba(255,180,20,0.6)" }}>COMBO x{s.n}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: "0.1em" }}>{s.move}!</div>
     </div>
   );
 }
@@ -69,17 +94,16 @@ function Crosshair() {
 function WeaponHUD() {
   const equipped = useGame((s) => s.equipped);
   const ammo = useGame((s) => s.ammo);
-  const reserve = useGame((s) => s.inventory.find((i) => i.id === "ammo")?.qty ?? 0);
   return (
-    <div style={{ position: "absolute", bottom: 96, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, background: "rgba(0,0,0,0.45)", padding: "6px 14px", borderRadius: 20, fontSize: 15 }}>
+    <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, background: "rgba(14,17,23,0.5)", backdropFilter: "blur(6px)", padding: "5px 14px", borderRadius: 18, fontSize: 14, border: "1px solid rgba(255,255,255,0.08)" }}>
       {equipped === "pistol" ? (
         <>
-          <span style={{ fontSize: 18 }}>🔫</span>
+          <span style={{ fontSize: 17 }}>🔫</span>
           <b style={{ color: ammo > 0 ? "#fff" : "#ff6a6a" }}>{ammo}</b>
-          <span style={{ opacity: 0.6, fontSize: 12 }}>/ {reserve}</span>
+          <span style={{ opacity: 0.55, fontSize: 12 }}>/ ∞</span>
         </>
       ) : (
-        <><span style={{ fontSize: 18 }}>👊</span><span style={{ fontSize: 12, opacity: 0.8 }}>Tangan kosong</span></>
+        <><span style={{ fontSize: 17 }}>👊</span><span style={{ fontSize: 12, opacity: 0.8 }}>Tangan kosong</span></>
       )}
     </div>
   );
@@ -239,39 +263,32 @@ function MobileControls() {
     <>
       <LookPad />
       <Joystick />
-      
-      {/* Unified Action Cluster (Bottom Right) */}
-      <div style={{ position: "absolute", right: 24, bottom: 32, display: "grid", gridTemplateColumns: "70px 70px", gap: 14, pointerEvents: "auto", alignItems: "end", justifyItems: "center" }}>
-        
-        {/* Left Column of Buttons */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+      {/* Main action cluster (bottom-right) — primary + jump/dodge/block */}
+      <div style={{ position: "absolute", right: 20, bottom: 26, display: "grid", gridTemplateColumns: "58px 70px", gap: 12, pointerEvents: "auto", alignItems: "end", justifyItems: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <HoldBlock />
-          <ActBtn action="dodge" label="Hindar" color="rgba(0,131,143,0.8)" />
-          {equipped === "pistol" && <ActBtn action="reload" label="Isi" color="rgba(93,64,55,0.8)" />}
+          <ActBtn action="dodge" label="Hindar" color="rgba(0,131,143,0.85)" small />
         </div>
-        
-        {/* Right Column of Buttons (Main Actions) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <ActBtn action="jump" label="Lompat" color="rgba(21,101,192,0.8)" />
-          {equipped === "pistol" ? (
-             <ActBtn action="fire" label="Tembak" color="rgba(229,57,53,0.9)" big />
-          ) : (
-             <ActBtn action="punch" label="Pukul" color="rgba(211,47,47,0.9)" big />
-          )}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <ActBtn action="jump" label="Lompat" color="rgba(21,101,192,0.85)" small />
+          {equipped === "pistol"
+            ? <ActBtn action="fire" label="Tembak" color="rgba(229,57,53,0.92)" big />
+            : <ActBtn action="punch" label="Pukul" color="rgba(211,47,47,0.92)" big />}
         </div>
-        
-      </div>
-      
-      {/* Auxiliary Buttons (Above Action Cluster) */}
-      <div style={{ position: "absolute", right: 24, bottom: 220, display: "flex", flexDirection: "column", gap: 10, pointerEvents: "auto", alignItems: "flex-end" }}>
-        <ActBtn action="interact" label="Aksi (E)" color="rgba(46,125,50,0.8)" small />
-        <ActBtn action="swap" label="Senjata" color="rgba(55,71,79,0.8)" small />
-        <ActBtn action="view" label="👁 Mode" color="rgba(70,55,90,0.85)" small />
       </div>
 
-      {/* Inventory button (Top Left) */}
+      {/* Secondary row (bottom-center) — small, out of the way of the minimap */}
+      <div style={{ position: "absolute", left: "50%", bottom: 60, transform: "translateX(-50%)", display: "flex", gap: 8, pointerEvents: "auto" }}>
+        <ActBtn action="interact" label="Aksi" color="rgba(46,125,50,0.85)" small />
+        <ActBtn action="swap" label="Senjata" color="rgba(55,71,79,0.85)" small />
+        <ActBtn action="view" label="👁" color="rgba(70,55,90,0.9)" small />
+        {equipped === "pistol" && <ActBtn action="reload" label="Isi" color="rgba(93,64,55,0.85)" small />}
+      </div>
+
+      {/* Inventory button (left, below stats) */}
       <button data-ui="1" onPointerDown={(e) => { e.preventDefault(); input.press("inv"); }}
-        style={{ position: "absolute", left: 16, top: 120, width: 56, height: 56, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.15)", background: "rgba(22,26,34,0.75)", backdropFilter: "blur(4px)", color: "#fff", fontSize: 13, fontWeight: 700, pointerEvents: "auto", touchAction: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+        style={{ position: "absolute", left: 16, top: 116, width: 50, height: 50, borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(20,24,32,0.6)", backdropFilter: "blur(6px)", color: "#fff", fontSize: 11, fontWeight: 700, pointerEvents: "auto", touchAction: "none" }}>
         🎒 Tas
       </button>
     </>

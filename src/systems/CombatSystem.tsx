@@ -8,6 +8,8 @@ import { useGame } from "@/core/store";
 import { input } from "@/core/input";
 import { enemies, type EnemyEntry } from "./registries";
 import { avatar } from "@/player/avatarState";
+import { combat, COMBO_MOVES } from "./combatState";
+import { hitNpcNear } from "./npcState";
 
 /**
  * Arkham-lite melee. Enemies (preman) aggro, close in and strike on a cooldown;
@@ -190,58 +192,63 @@ export default function CombatSystem() {
     const punch = input.consume("punch");
     const kick = input.consume("kick");
     if (punch || kick) {
-      // fire the strike animation immediately on input (even if it misses)
-      if (kick) {
-        avatar.kickAt = performance.now();
-        avatar.comboCount = 1;
-      } else {
-        avatar.punchAt = performance.now();
-        avatar.comboCount = combo.current.count + 1; // predict next combo
-      }
-      const dmg = kick ? KICK_DMG : PUNCH_DMG;
-      
-      const rayOrigin = camera.position;
-      const rayDir = new Vector3();
-      camera.getWorldDirection(rayDir);
+      const now = performance.now();
+      // pick the move: kick = Tendang(5); punch cycles jab/cross/hook/uppercut(1..4)
+      const moveIdx = kick ? 5 : ((combo.current.count) % 4) + 1;
+      if (kick) avatar.kickAt = now; else avatar.punchAt = now;
+      avatar.comboCount = moveIdx;
+      const dmg = (kick ? KICK_DMG : PUNCH_DMG) * (moveIdx === 4 ? 1.4 : moveIdx === 5 ? 1.3 : 1);
 
+      // aim a melee cone along where the camera looks
+      const rayDir = fwd;
+      camera.getWorldDirection(rayDir);
+      rayDir.y = 0; rayDir.normalize();
+      const [px0, , pz0] = st.runtime.pos;
+
+      // 1) try preman (registry)
       let best: EnemyEntry | null = null;
-      let bestDist = PLAYER_REACH + 1;
-      
+      let bestScore = -Infinity;
       enemies.forEach((e) => {
         if (e.dead) return;
-        // Check intersection with an imaginary cylinder around the enemy (height 2.0, radius 0.6)
-        ev.set(e.pos[0], 1.0, e.pos[2]); // center of enemy mass
-        const v = new Vector3().subVectors(ev, rayOrigin);
-        const t = v.dot(rayDir);
-        
-        if (t > 0 && t < bestDist) {
-          const proj = new Vector3().copy(rayOrigin).add(rayDir.clone().multiplyScalar(t));
-          // roughly hit cylinder radius
-          const hitDist = proj.distanceTo(ev);
-          if (hitDist < 0.7) {
-            best = e;
-            bestDist = t;
-          }
-        }
+        ev.set(e.pos[0] - px0, 0, e.pos[2] - pz0);
+        const d = ev.length();
+        if (d > PLAYER_REACH || d < 0.01) return;
+        ev.normalize();
+        const dot = ev.x * rayDir.x + ev.z * rayDir.z;
+        if (dot < 0.4) return;
+        const score = dot - d / PLAYER_REACH;
+        if (score > bestScore) { bestScore = score; best = e; }
       });
 
-      const now = performance.now();
+      let landed = false;
       if (best) {
-        // combo within 1.2s window scales damage
         combo.current.count = now < combo.current.until ? combo.current.count + 1 : 1;
-        combo.current.until = now + 1200;
+        combo.current.until = now + 1400;
         const target = best as EnemyEntry;
-        const mult = 1 + Math.min(combo.current.count - 1, 4) * 0.15;
+        const mult = 1 + Math.min(combo.current.count - 1, 6) * 0.12;
         target.hp -= dmg * mult;
         target.hitAt = now;
-        st.triggerHitMarker(); // Flash the crosshair
-        if (target.hp <= 0) {
-          target.dead = true;
-          target.diedAt = now;
+        landed = true;
+        if (target.hp <= 0 && !target.dead) {
+          target.dead = true; target.diedAt = now;
           addExp(40);
           report("defeat", { target: "preman" });
-          notify(`Preman kalah! Combo x${combo.current.count}`);
         }
+      } else {
+        // 2) try an ordinary pedestrian → they flee and can die
+        const ni = hitNpcNear(px0, pz0, rayDir.x, rayDir.z, PLAYER_REACH, dmg);
+        if (ni >= 0) {
+          combo.current.count = now < combo.current.until ? combo.current.count + 1 : 1;
+          combo.current.until = now + 1400;
+          landed = true;
+        }
+      }
+
+      if (landed) {
+        st.triggerHitMarker();
+        combat.comboCount = combo.current.count;
+        combat.comboAt = now;
+        combat.lastMove = COMBO_MOVES[moveIdx - 1];
       }
     }
 
