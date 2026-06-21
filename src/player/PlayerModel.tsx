@@ -130,6 +130,20 @@ export default function PlayerModel() {
       muzzle.current.visible = false;
     }
 
+    // MOTORCYCLE SITTING POSE
+    if (avatar.ridingMode === "moto") {
+      legL.current.rotation.x = MathUtils.lerp(legL.current.rotation.x, -1.2, sm);
+      legR.current.rotation.x = MathUtils.lerp(legR.current.rotation.x, -1.2, sm);
+      legL.current.rotation.z = MathUtils.lerp(legL.current.rotation.z, 0.2, sm);
+      legR.current.rotation.z = MathUtils.lerp(legR.current.rotation.z, -0.2, sm);
+      armL.current.rotation.x = MathUtils.lerp(armL.current.rotation.x, -1.0, sm);
+      armR.current.rotation.x = MathUtils.lerp(armR.current.rotation.x, -1.0, sm);
+      lean.current = MathUtils.lerp(lean.current, 0.25, sm);
+    } else {
+      legL.current.rotation.z = MathUtils.lerp(legL.current.rotation.z, 0, sm);
+      legR.current.rotation.z = MathUtils.lerp(legR.current.rotation.z, 0, sm);
+    }
+
     bodyG.current.rotation.x = lean.current;
     bodyG.current.position.y = idleBob;
   });

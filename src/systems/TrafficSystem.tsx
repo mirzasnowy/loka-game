@@ -3,7 +3,7 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D, Color, MathUtils } from "three";
-import { useGame } from "@/core/store";
+import { useGame, MAX_NPCS, npcPositions } from "@/core/store";
 import { BLOCK, ROAD_LINES, lanePoint, inPark, PARK_RADIUS, MAP } from "@/world/grid";
 
 const MAX = 38;
@@ -99,6 +99,34 @@ export default function TrafficSystem() {
         const distAhead = (nextInter - v.along) * v.dir;
         if (distAhead > 0 && distAhead < STOP_DIST) targetSpeed = 0;
       }
+      
+      // brake for pedestrians (NPCs) ahead
+      if (targetSpeed > 0) {
+        const lp = lanePoint(v.axis, v.line, v.dir, v.along);
+        for (let j = 0; j < MAX_NPCS; j++) {
+          const nx = npcPositions[j * 2];
+          const nz = npcPositions[j * 2 + 1];
+          if (nx > 90000) continue;
+          
+          // is NPC near the vehicle?
+          const dx = nx - lp.x;
+          const dz = nz - lp.z;
+          const distSq = dx * dx + dz * dz;
+          
+          if (distSq < 36) { // within 6 meters radius
+            // check if they are in front
+            const fwdX = Math.sin(lp.rotY);
+            const fwdZ = Math.cos(lp.rotY);
+            const dot = dx * fwdX + dz * fwdZ;
+            
+            if (dot > 0 && dot < 8 && distSq - dot*dot < 6) { // in front up to 8m, lateral < 2.4m
+              targetSpeed = 0;
+              break;
+            }
+          }
+        }
+      }
+
       v.cur = MathUtils.lerp(v.cur, targetSpeed, 1 - Math.exp(-6 * delta));
       v.along += v.cur * v.dir * delta;
 
@@ -176,13 +204,13 @@ export default function TrafficSystem() {
   return (
     <>
       <instancedMesh ref={bodyRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
       </instancedMesh>
       <instancedMesh ref={cabRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
       </instancedMesh>
       <instancedMesh ref={whlRef} args={[undefined, undefined, WHEEL_COUNT]} castShadow frustumCulled={false}>
-        <cylinderGeometry args={[1, 1, 0.2, 12]} /><meshLambertMaterial color="white" vertexColors />
+        <cylinderGeometry args={[1, 1, 0.2, 12]} /><meshLambertMaterial color="white" />
       </instancedMesh>
     </>
   );

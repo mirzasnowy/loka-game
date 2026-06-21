@@ -13,6 +13,9 @@ import { QUESTS, type QuestDef, type ObjectiveKind } from "@/data/quests";
 export type TimeOfDay = "morning" | "afternoon" | "sunset" | "night";
 export type Weather = "clear" | "cloudy" | "rain";
 
+export const MAX_NPCS = 60;
+export const npcPositions = new Float32Array(MAX_NPCS * 2);
+
 export interface PlayerStats {
   health: number;
   maxHealth: number;

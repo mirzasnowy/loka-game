@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { RigidBody, CapsuleCollider, type RapierRigidBody } from "@react-three/rapier";
+import { RigidBody, CapsuleCollider, useRapier, type RapierRigidBody } from "@react-three/rapier";
 import { Vector3, Quaternion, Euler, MathUtils, Group } from "three";
 import { useGame } from "@/core/store";
 import { input } from "@/core/input";
@@ -38,7 +38,9 @@ export default function Player() {
   const faceYaw = useRef(0); // where the character model points
   const wasDriving = useRef(false);
   const { camera } = useThree();
+  const { rapier, world } = useRapier();
   const [start] = useState<[number, number, number]>(() => useGame.getState().runtime.pos);
+  const jumpCooldown = useRef(0);
 
   useFrame((_, delta) => {
     input.bind();
@@ -58,6 +60,7 @@ export default function Player() {
     }
     if (!driving && wasDriving.current) {
       b.setEnabled(true);
+      avatar.ridingMode = false;
       // drop the player just beside where the vehicle is now
       const [vx, vy, vz] = st.runtime.pos;
       b.setTranslation({ x: vx + 2, y: vy + 1, z: vz }, true);
@@ -84,13 +87,18 @@ export default function Player() {
 
     const v = b.linvel();
     b.setLinvel({ x: moveDir.x * speed, y: v.y, z: moveDir.z * speed }, true);
-    const grounded = Math.abs(v.y) < 0.12;
 
-    // Jump (grounded ~ vertical velocity near zero). ponytail: velocity check,
-    // upgrade to a downward ray if coyote-time/double-jump bugs appear.
-    if (input.consume("jump") && grounded) {
+    // Reliable ground check via raycast
+    jumpCooldown.current -= delta;
+    const p = b.translation();
+    const ray = new rapier.Ray({ x: p.x, y: p.y - 0.84 }, { x: 0, y: -1, z: 0 });
+    const hit = world.castRay(ray, 0.15, true);
+    const grounded = hit !== null;
+
+    if (input.consume("jump") && grounded && jumpCooldown.current <= 0) {
       b.setLinvel({ x: v.x, y: JUMP, z: v.z }, true);
       avatar.jumpAt = performance.now();
+      jumpCooldown.current = 0.5;
     }
 
     // Dodge: burst in current move/facing dir + i-frames.
@@ -123,7 +131,6 @@ export default function Player() {
       if (visual.current) visual.current.rotation.y = faceYaw.current;
     }
 
-    const p = b.translation();
     useGame.getState().setPlayerPos([p.x, p.y, p.z]);
     useGame.getState().setPlayerFacing(faceYaw.current);
 
@@ -150,7 +157,7 @@ export default function Player() {
       canSleep={false}
     >
       <CapsuleCollider args={[0.5, 0.35]} />
-      <group ref={visual}>
+      <group ref={visual} position={[0, -0.925, 0]}>
         <PlayerModel />
       </group>
     </RigidBody>
@@ -167,6 +174,7 @@ function this_driveVehicle(
   const entry = drivables.get(uid);
   if (!entry) return;
   const { body, spec } = entry;
+  avatar.ridingMode = spec.kind === "moto" ? "moto" : "car";
 
   // Current yaw of the vehicle.
   const rot = body.rotation();

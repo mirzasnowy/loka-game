@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef } from "react";
-import { Object3D, Color, InstancedMesh } from "three";
+import { Object3D, Color, InstancedMesh, CanvasTexture } from "three";
 import { Text } from "@react-three/drei";
 import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { Asset } from "@/core/assetRegistry";
@@ -13,6 +13,21 @@ import {
 
 const tmp = new Object3D();
 const tmpColor = new Color();
+
+const winTex = (() => {
+  if (typeof document === 'undefined') return undefined;
+  const c = document.createElement("canvas");
+  c.width = 512; c.height = 512;
+  const ctx = c.getContext("2d")!;
+  ctx.fillStyle = "#16202a"; ctx.fillRect(0,0,512,512);
+  ctx.fillStyle = "#ffffff";
+  for (let x = 16; x < 512; x += 128) {
+    for (let y = 16; y < 512; y += 128) {
+      ctx.fillRect(x, y, 96, 96);
+    }
+  }
+  return new CanvasTexture(c);
+})();
 
 // ─── Buildings (body + roof + glass facade + tall entrance + rooftop unit) ───
 function Buildings() {
@@ -78,10 +93,10 @@ function Buildings() {
         <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" emissive="#1c2026" emissiveIntensity={0.5} />
       </instancedMesh>
       <instancedMesh ref={winRef} args={[undefined, undefined, n]}>
-        <planeGeometry args={[1, 1]} /><meshLambertMaterial color="white" transparent opacity={0.62} />
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial color="white" transparent opacity={0.8} map={winTex} />
       </instancedMesh>
       <instancedMesh ref={win2Ref} args={[undefined, undefined, n]}>
-        <planeGeometry args={[1, 1]} /><meshLambertMaterial color="white" transparent opacity={0.62} />
+        <planeGeometry args={[1, 1]} /><meshLambertMaterial color="white" transparent opacity={0.8} map={winTex} />
       </instancedMesh>
       <instancedMesh ref={doorRef} args={[undefined, undefined, n]}>
         <planeGeometry args={[1, 1]} /><meshLambertMaterial color="white" transparent opacity={0.85} />
@@ -459,6 +474,8 @@ export default function World() {
       <StreetLamps />
       <MonasPark />
       <StreetProps />
+      <Minimarkets />
+      <Gerobaks />
 
       <Asset id="monas" position={[0, 0, 0]} />
       <DistrictLabels />

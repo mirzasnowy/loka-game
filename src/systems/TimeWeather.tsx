@@ -46,6 +46,7 @@ export default function TimeWeather() {
   const sun    = useRef<DirectionalLight>(null!);
   const amb    = useRef<AmbientLight>(null!);
   const hemi   = useRef<HemisphereLight>(null!);
+  const sky    = useRef<any>(null!);
   const rain   = useRef<Points>(null!);
   const { scene } = useThree();
 
@@ -102,6 +103,10 @@ export default function TimeWeather() {
       sun.current.intensity = Math.max(0.6, (0.4 + daylight * 1.2) * (cloudy ? 0.7 : 1));
       sun.current.target.position.set(0, 0, 0);
       sun.current.target.updateMatrixWorld();
+    }
+    
+    if (sky.current && sky.current.material && sky.current.material.uniforms) {
+      sky.current.material.uniforms.sunPosition.value.copy(sunVec);
     }
 
     // Ambient — high floor so every face keeps its color even in shadow
@@ -178,6 +183,7 @@ export default function TimeWeather() {
 
       {/* Outstanding Sky */}
       <Sky
+        ref={sky}
         sunPosition={sunVec}
         turbidity={0.8}
         rayleigh={0.5}

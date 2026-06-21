@@ -3,10 +3,9 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D, Color, MathUtils } from "three";
-import { useGame } from "@/core/store";
+import { useGame, MAX_NPCS, npcPositions } from "@/core/store";
 import { BLOCK, SIDEWALK_OFF, snapToSidewalk } from "@/world/grid";
 
-const MAX = 60;
 const SPAWN_RING = 70;
 const DESPAWN = 120;
 
@@ -67,7 +66,7 @@ export default function NPCSystem() {
 
   const agents = useMemo<Agent[]>(() => {
     const [px, , pz] = useGame.getState().runtime.pos;
-    return Array.from({ length: MAX }, () => {
+    return Array.from({ length: MAX_NPCS }, () => {
       const a: Agent = {
         axis: "x", line: 0, side: 1, along: 0, dir: 1,
         speed: 1.2 + Math.random() * 1.1, state: "walk", timer: Math.random() * 3,
@@ -95,13 +94,15 @@ export default function NPCSystem() {
     if (st.paused) return;
     const [px, , pz] = st.runtime.pos;
     const density = st.timeOfDay === "night" ? 0.4 : st.timeOfDay === "afternoon" ? 1 : 0.85;
-    const active = Math.floor(MAX * density);
+    const active = Math.floor(MAX_NPCS * density);
     const HIDE = -3000;
 
-    for (let i = 0; i < MAX; i++) {
+    for (let i = 0; i < MAX_NPCS; i++) {
       const a = agents[i];
 
       if (i >= active) {
+        npcPositions[i * 2] = 99999;
+        npcPositions[i * 2 + 1] = 99999;
         dummy.position.set(0, HIDE, 0); dummy.scale.setScalar(0.0001); dummy.updateMatrix();
         headRef.current.setMatrixAt(i, dummy.matrix);
         bodyRef.current.setMatrixAt(i, dummy.matrix);
@@ -171,6 +172,9 @@ export default function NPCSystem() {
       const bob = stepping ? Math.abs(Math.sin(a.phase)) * 0.06 : 0;
       const tilt = stepping ? 0.06 : 0;
 
+      npcPositions[i * 2] = x;
+      npcPositions[i * 2 + 1] = z;
+
       // render 3 stacked boxes
       dummy.position.set(x, 1.58 + bob, z); dummy.rotation.set(tilt, a.rot, 0); dummy.scale.set(0.38, 0.38, 0.36); dummy.updateMatrix();
       headRef.current.setMatrixAt(i, dummy.matrix);
@@ -185,14 +189,14 @@ export default function NPCSystem() {
 
   return (
     <>
-      <instancedMesh ref={headRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
+      <instancedMesh ref={headRef} args={[undefined, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
       </instancedMesh>
-      <instancedMesh ref={bodyRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
+      <instancedMesh ref={bodyRef} args={[undefined, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
       </instancedMesh>
-      <instancedMesh ref={legsRef} args={[undefined, undefined, MAX]} castShadow frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" vertexColors />
+      <instancedMesh ref={legsRef} args={[undefined, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
+        <boxGeometry args={[1, 1, 1]} /><meshLambertMaterial color="white" />
       </instancedMesh>
     </>
   );
