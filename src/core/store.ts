@@ -94,6 +94,9 @@ interface GameState {
   // respawn: Player watches respawnSeq and teleports to spawn when it changes
   respawnSeq: number;
 
+  // navigation waypoint (shown on minimap + HUD)
+  navTarget: { name: string; x: number; z: number } | null;
+
   // --- actions ---
   setBooted: (b: boolean) => void;
   setPaused: (b: boolean) => void;
@@ -133,6 +136,7 @@ interface GameState {
 
   notify: (text: string) => void;
   triggerHitMarker: () => void;
+  setNavTarget: (t: { name: string; x: number; z: number } | null) => void;
   respawn: () => void;
   hydrate: (partial: Partial<SaveShape>) => void;
 }
@@ -205,6 +209,7 @@ export const useGame = create<GameState>((set, get) => ({
   toast: null,
   hitMarkerTime: null,
   respawnSeq: 0,
+  navTarget: null,
 
   setBooted: (booted) => set({ booted }),
   setPaused: (paused) => set({ paused }),
@@ -358,6 +363,11 @@ export const useGame = create<GameState>((set, get) => ({
 
   notify: (text) => set({ toast: { id: toastSeq++, text } }),
   triggerHitMarker: () => set({ hitMarkerTime: performance.now() }),
+
+  setNavTarget: (navTarget) => {
+    set({ navTarget });
+    if (navTarget) get().notify(`🧭 Menuju ${navTarget.name}`);
+  },
 
   respawn: () =>
     set((s) => ({

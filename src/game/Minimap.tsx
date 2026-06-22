@@ -74,6 +74,17 @@ export default function Minimap() {
         if (obj?.pos) dot(obj.pos[0], obj.pos[2], "#7c4dff", 3.5);
       }
 
+      // navigation waypoint (clamped to the ring if off-map)
+      if (st.navTarget) {
+        let [mx, my] = w2m(st.navTarget.x, st.navTarget.z, px, pz);
+        const dx = mx - r, dy = my - r, dd = Math.hypot(dx, dy);
+        if (dd > r - 5) { mx = r + (dx / dd) * (r - 5); my = r + (dy / dd) * (r - 5); }
+        const pulse = 4 + Math.sin(performance.now() * 0.006) * 1.5;
+        ctx.fillStyle = "#22e0ff";
+        ctx.beginPath(); ctx.arc(mx, my, pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+
       ctx.restore();
 
       // player arrow (center)

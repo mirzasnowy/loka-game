@@ -1,6 +1,6 @@
 # Versioning Rule
 
-Current version: **1.3.0**
+Current version: **1.3.1**
 
 ## Scheme: `MAJOR.MINOR.PATCH`
 
@@ -19,6 +19,11 @@ stable and we deliberately cut a milestone.
 3. Push `main` → Cloudflare Pages auto-redeploys to https://loka.mirzakur.xyz
 
 ## History
+- 1.3.1 — district buildings made prominent with tall illuminated roadside PYLON signs
+  (brand-coloured, glowing, visible from afar) + concrete pads; navigation system: pick
+  any of the 10 places (or Monas) from the hamburger menu "Navigasi" list, get a waypoint
+  banner with a direction arrow + live distance and a pulsing marker on the minimap that
+  auto-clears on arrival. GUI kept tidy (banner has its own row, menu scrolls).
 - 1.3.0 (MILESTONE) — added a 10-parcel branded Indonesian commercial district (Mie
   Gacoan, Indomaret, Alfamart, Kopi Kenangan, Fitness First, RS Hermina, SPBU Pertamina,
   Richeese Factory, Celebrity Fitness, Summarecon Mall). Each on its own city block with

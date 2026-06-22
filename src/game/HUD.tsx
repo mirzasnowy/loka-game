@@ -8,7 +8,13 @@ import { VENDORS } from "@/data/vendors";
 import { avatar } from "@/player/avatarState";
 import { combat } from "@/systems/combatState";
 import { view } from "@/core/view";
+import { DISTRICT } from "@/world/districtData";
 import Minimap from "./Minimap";
+
+const NAV_POINTS = [
+  { name: "Monas", short: "🗼 Monas", x: 0, z: 38 },
+  ...DISTRICT.map((p) => ({ name: p.name, short: p.short, x: p.cx, z: p.cz - 11 })),
+];
 
 const FOOD = Object.fromEntries(VENDORS.map((v) => [v.food.id, v.food]));
 
@@ -33,6 +39,7 @@ export default function HUD() {
     <div style={{ position: "fixed", inset: 0, pointerEvents: "none", color: "#fff", fontFamily: "system-ui, sans-serif", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>
       <Stats />
       <TopCenter clockOn={clockOn} />
+      <NavBanner />
       {mapOn && !menuOpen && (
         <div style={{ position: "absolute", top: c(ST, 52), right: c(SR, 12), zIndex: 10 }}><Minimap /></div>
       )}
@@ -118,6 +125,38 @@ function TopCenter({ clockOn }: { clockOn: boolean }) {
   );
 }
 
+/* ------------------------------ navigation ------------------------------ */
+
+function NavBanner() {
+  const nav = useGame((s) => s.navTarget);
+  const [info, setInfo] = useState({ dist: 0, ang: 0 });
+  useEffect(() => {
+    if (!nav) return;
+    let raf = 0;
+    const tick = () => {
+      const st = useGame.getState();
+      const [px, , pz] = st.runtime.pos;
+      const dx = nav.x - px, dz = nav.z - pz;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 12) { st.setNavTarget(null); st.notify(`Tiba di ${nav.name} ✅`); return; }
+      setInfo({ dist, ang: Math.atan2(dx, dz) - st.runtime.facing });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [nav]);
+  if (!nav) return null;
+  return (
+    <div style={{ position: "absolute", top: c(ST, 62), left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 8, background: "rgba(14,17,23,0.62)", backdropFilter: "blur(8px)", border: "1px solid rgba(80,200,255,0.4)", borderRadius: 999, padding: "5px 8px 5px 12px", fontSize: 12.5, fontWeight: 700, pointerEvents: "auto", zIndex: 25, boxShadow: "0 2px 12px rgba(0,0,0,0.4)" }}>
+      <span style={{ display: "inline-block", transform: `rotate(${info.ang}rad)`, color: "#5fd0ff", fontSize: 14 }}>▲</span>
+      <span>{nav.name}</span>
+      <span style={{ opacity: 0.7 }}>{Math.round(info.dist)}m</span>
+      <button data-ui="1" onPointerDown={(e) => { e.preventDefault(); useGame.getState().setNavTarget(null); }}
+        style={{ width: 22, height: 22, borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.14)", color: "#fff", fontSize: 12, lineHeight: 1 }}>✕</button>
+    </div>
+  );
+}
+
 /* ---------------------------- hamburger menu ---------------------------- */
 
 function Hamburger(props: {
@@ -144,12 +183,19 @@ function Hamburger(props: {
         <>
           {/* backdrop to guarantee taps land + close on outside tap */}
           <div data-ui="1" onPointerDown={() => setMenuOpen(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", pointerEvents: "auto", zIndex: 190 }} />
-          <div style={{ position: "absolute", top: c(ST, 56), right: c(SR, 12), width: 188, background: "rgba(18,22,30,0.97)", border: BORDER, borderRadius: 12, padding: 8, pointerEvents: "auto", display: "flex", flexDirection: "column", gap: 6, boxShadow: "0 10px 30px rgba(0,0,0,0.5)", zIndex: 200 }}>
+          <div style={{ position: "absolute", top: c(ST, 56), right: c(SR, 12), width: 200, maxHeight: "78vh", overflowY: "auto", background: "rgba(18,22,30,0.97)", border: BORDER, borderRadius: 12, padding: 8, pointerEvents: "auto", display: "flex", flexDirection: "column", gap: 6, boxShadow: "0 10px 30px rgba(0,0,0,0.5)", zIndex: 200 }}>
             <Item label="🗺️ Peta" on={mapOn} onClick={() => setMapOn(!mapOn)} />
             <Item label="🕐 Jam & Cuaca" on={clockOn} onClick={() => setClockOn(!clockOn)} />
             <Item label={`🎥 Kamera ${view.mode.toUpperCase()}`} onClick={() => { view.mode = view.mode === "tps" ? "fps" : "tps"; force((n) => n + 1); }} />
             <Item label="🎒 Inventaris" onClick={() => { useGame.getState().toggleInventory(true); setMenuOpen(false); }} />
             <Item label="💫 Respawn" onClick={() => { useGame.getState().respawn(); setMenuOpen(false); }} />
+            <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.12em", color: "#ffd24a", padding: "6px 4px 2px", borderTop: "1px solid rgba(255,255,255,0.1)", marginTop: 2 }}>🧭 NAVIGASI</div>
+            {NAV_POINTS.map((n) => (
+              <button key={n.name} data-ui="1" onPointerDown={(e) => { e.preventDefault(); useGame.getState().setNavTarget(n); setMenuOpen(false); }}
+                style={{ textAlign: "left", background: "rgba(255,255,255,0.06)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 11px", fontSize: 12.5, fontWeight: 600 }}>
+                {n.short}
+              </button>
+            ))}
           </div>
         </>
       )}

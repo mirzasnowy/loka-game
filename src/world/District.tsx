@@ -360,16 +360,31 @@ function Building({ id }: { id: string }) {
   }
 }
 
+/** Tall illuminated roadside pylon sign so the place is visible from far away. */
+function Pylon({ name, color, textColor }: { name: string; color: string; textColor: string }) {
+  return (
+    <group position={[-13, 0, -13.5]}>
+      <mesh position={[0, 5.6, 0]} castShadow><cylinderGeometry args={[0.22, 0.3, 11.2, 8]} /><meshLambertMaterial color="#9aa0a8" /></mesh>
+      <group position={[0, 11.4, 0]} rotation={[0, Math.PI, 0]}>
+        <mesh castShadow><boxGeometry args={[5, 2.3, 0.45]} /><meshLambertMaterial color={color} emissive={color} emissiveIntensity={0.55} /></mesh>
+        <mesh position={[0, 0, 0.24]}><boxGeometry args={[4.7, 2.0, 0.06]} /><meshBasicMaterial color={color} toneMapped={false} /></mesh>
+        <Text position={[0, 0, 0.3]} fontSize={0.6} color={textColor} anchorX="center" anchorY="middle" maxWidth={4.5} outlineWidth={0.02} outlineColor="#00000088">{name}</Text>
+      </group>
+    </group>
+  );
+}
+
 function ParcelGroup({ p }: { p: Parcel }) {
   return (
     <group position={[p.cx, 0, p.cz]}>
       {/* concrete parcel pad + perimeter landscaping + lamps */}
       <Pad w={30} d={30} color="#7da06b" y={0.02} />
       <Building id={p.id} />
+      <Pylon name={p.name} color={p.color} textColor={p.textColor} />
       {/* corner trees + lamps (don't double up for spbu/mall which manage their own) */}
       {p.id !== "spbu" && p.id !== "mall" && (
         <>
-          <Tree x={-13} z={-12} /><Tree x={13} z={-12} />
+          <Tree x={13} z={-12} />
           <Lamp x={-13} z={-2} /><Lamp x={13} z={-2} />
         </>
       )}
