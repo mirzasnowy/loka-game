@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D, Color, MathUtils } from "three";
 import { useGame, MAX_NPCS, npcPositions } from "@/core/store";
 import { BLOCK, ROAD_LINES, ROAD_HALF, lanePoint, PARK_RADIUS, MAP } from "@/world/grid";
+import { inDpr } from "@/world/dprData";
 import { traffic, GREEN_TIME, YELLOW_TIME } from "./trafficState";
 import { avatar } from "@/player/avatarState";
 import { addShake, addSpark, dropMoney } from "./effects";
@@ -190,7 +191,7 @@ export default function TrafficSystem() {
       const x = lp.x, z = lp.z, rotY = lp.rotY;
 
       // recycle far / off-map / park
-      if (Math.hypot(x - px, z - pz) > DESPAWN || Math.abs(v.along) > MAP - 6 || Math.hypot(x, z) < PARK_RADIUS + 6) {
+      if (Math.hypot(x - px, z - pz) > DESPAWN || Math.abs(v.along) > MAP - 6 || Math.hypot(x, z) < PARK_RADIUS + 6 || inDpr(x, z)) {
         spawnVeh(v, px, pz);
         bodyD.position.set(0, HIDE, 0); bodyD.scale.setScalar(0.001); bodyD.updateMatrix();
         bodyRef.current.setMatrixAt(i, bodyD.matrix);

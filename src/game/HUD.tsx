@@ -9,10 +9,12 @@ import { avatar } from "@/player/avatarState";
 import { combat } from "@/systems/combatState";
 import { view } from "@/core/view";
 import { DISTRICT } from "@/world/districtData";
+import { DPR_NAV } from "@/world/dprData";
 import Minimap from "./Minimap";
 
 const NAV_POINTS = [
   { name: "Monas", short: "🗼 Monas", x: 0, z: 38 },
+  DPR_NAV,
   ...DISTRICT.map((p) => ({ name: p.name, short: p.short, x: p.cx, z: p.cz - 11 })),
 ];
 

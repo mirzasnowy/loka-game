@@ -9,6 +9,8 @@ import { Asset } from "@/core/assetRegistry";
 import { VENDOR_PLACEMENTS } from "@/data/vendors";
 import District from "./District";
 import { DISTRICT } from "./districtData";
+import Dpr from "./Dpr";
+import { DPR_COLLIDERS } from "./dprData";
 import { WORLD, DISTRICTS } from "./worldConfig";
 import { generateCity } from "./proc";
 import { traffic, YELLOW_TIME } from "@/systems/trafficState";
@@ -656,7 +658,15 @@ export default function World() {
       <Minimarkets />
       <TrafficLights />
       <District />
+      <Dpr />
       <StaticColliders />
+
+      {/* DPR complex colliders */}
+      <RigidBody type="fixed" colliders={false}>
+        {DPR_COLLIDERS.map((b, i) => (
+          <CuboidCollider key={`dpr${i}`} args={[b[2] / 2, b[4] / 2, b[3] / 2]} position={[b[0], b[4] / 2, b[1]]} />
+        ))}
+      </RigidBody>
 
       {/* District building colliders */}
       <RigidBody type="fixed" colliders={false}>
