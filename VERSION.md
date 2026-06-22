@@ -1,6 +1,6 @@
 # Versioning Rule
 
-Current version: **1.2.6**
+Current version: **1.2.7**
 
 ## Scheme: `MAJOR.MINOR.PATCH`
 
@@ -19,6 +19,9 @@ stable and we deliberately cut a milestone.
 3. Push `main` → Cloudflare Pages auto-redeploys to https://loka.mirzakur.xyz
 
 ## History
+- 1.2.7 — fixed traffic freezing: vehicles wrongly treated a car BEHIND them as an
+  obstacle (negative clearance → stuck). Now only count vehicles ahead; red-light stop
+  only applies while still approaching the line, so nothing freezes for no reason.
 - 1.2.6 — rewrote traffic with a car-following algorithm that HARD-CLAMPS positions
   (vehicles can never overlap/pass through), proper stopping before the light, and
   braking for pedestrians/player (no random run-overs). Realistic varied vehicle

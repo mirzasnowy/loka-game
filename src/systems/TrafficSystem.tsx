@@ -148,18 +148,20 @@ export default function TrafficSystem() {
       // ── how far the FRONT can advance before hitting something ──
       let clearance = 1e9;
 
-      // red/yellow light → stop just before the intersection box
+      // red/yellow light → stop just before the line, but only if still approaching
+      // (a car already in the junction keeps going so it never freezes mid-crossing)
       if (!hasGreen) {
         const nextInter = (v.dir > 0 ? Math.ceil((v.along + 0.01) / BLOCK) : Math.floor((v.along - 0.01) / BLOCK)) * BLOCK;
         const stopLine = nextInter - v.dir * (ROAD_HALF + 1.0);
         const d = (stopLine - frontAlong) * v.dir;
-        if (d < clearance) clearance = d;
+        if (d >= 0 && d < clearance) clearance = d;
       }
-      // vehicle ahead in the same lane
+      // vehicle ahead in the same lane (must be IN FRONT — ignore cars behind)
       for (let j = 0; j < MAX; j++) {
         if (j === i) continue;
         const o = vehicles[j];
         if (o.axis !== v.axis || o.dir !== v.dir || Math.abs(o.line - v.line) > 1.5) continue;
+        if ((o.along - v.along) * v.dir <= 0) continue; // behind us → not an obstacle
         const leadRear = o.along - v.dir * (KINDS[o.kind].l / 2);
         const d = (leadRear - frontAlong) * v.dir - MIN_GAP;
         if (d < clearance) clearance = d;
