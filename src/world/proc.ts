@@ -2,6 +2,7 @@ import { WORLD, DISTRICTS, type DistrictDef } from "./worldConfig";
 import {
   BLOCK, ROAD_LINES, SIDEWALK_OFF, SIDEWALK_OUTER, isBuildable, inPark, nearestLine, distToLine,
 } from "./grid";
+import { inDistrict } from "./districtData";
 
 /** Deterministic PRNG (mulberry32) so the city is identical every load. */
 function mulberry32(seed: number) {
@@ -90,6 +91,7 @@ export function generateCity(): { buildings: Building[]; trees: TreePos[]; store
       const cx = x + (rng() - 0.5) * 3;
       const cz = z + (rng() - 0.5) * 3;
       if (!isBuildable(cx, cz)) continue;
+      if (inDistrict(cx, cz)) continue; // reserved for the commercial district
 
       const { d, dist } = nearestDistrict(cx, cz);
       const inCity = dist < d.radius * BLOCK * 0.5;
@@ -139,6 +141,7 @@ export function generateCity(): { buildings: Building[]; trees: TreePos[]; store
         if (inPark(tx, tz)) continue;
         if (Math.abs(x - nearestLine(x)) < 7) continue; // clear of intersections
         if (tRng() > 0.5) continue;
+        if (inDistrict(tx, tz)) continue;            // district has its own landscaping
         if (overlaps(tx, tz, 1.6)) continue; // don't grow into a building
         trees.push({ x: tx, z: tz, scale: 0.85 + tRng() * 0.45, variant: (tRng() * 5) | 0 });
       }

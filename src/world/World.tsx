@@ -7,6 +7,8 @@ import { Text } from "@react-three/drei";
 import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { Asset } from "@/core/assetRegistry";
 import { VENDOR_PLACEMENTS } from "@/data/vendors";
+import District from "./District";
+import { DISTRICT } from "./districtData";
 import { WORLD, DISTRICTS } from "./worldConfig";
 import { generateCity } from "./proc";
 import { traffic, YELLOW_TIME } from "@/systems/trafficState";
@@ -653,7 +655,15 @@ export default function World() {
       <StreetProps />
       <Minimarkets />
       <TrafficLights />
+      <District />
       <StaticColliders />
+
+      {/* District building colliders */}
+      <RigidBody type="fixed" colliders={false}>
+        {DISTRICT.map((p) => (
+          <CuboidCollider key={p.id} args={[p.box[2] / 2, p.box[4] / 2, p.box[3] / 2]} position={[p.cx + p.box[0], p.box[4] / 2, p.cz + p.box[1]]} />
+        ))}
+      </RigidBody>
 
       {/* Monas solid colliders so the player stands on the base, never sinks in */}
       <RigidBody type="fixed" colliders={false}>

@@ -1,6 +1,6 @@
 # Versioning Rule
 
-Current version: **1.2.7**
+Current version: **1.3.0**
 
 ## Scheme: `MAJOR.MINOR.PATCH`
 
@@ -19,6 +19,13 @@ stable and we deliberately cut a milestone.
 3. Push `main` → Cloudflare Pages auto-redeploys to https://loka.mirzakur.xyz
 
 ## History
+- 1.3.0 (MILESTONE) — added a 10-parcel branded Indonesian commercial district (Mie
+  Gacoan, Indomaret, Alfamart, Kopi Kenangan, Fitness First, RS Hermina, SPBU Pertamina,
+  Richeese Factory, Celebrity Fitness, Summarecon Mall). Each on its own city block with
+  real signage (3D text), glass facades, parking lots + stalls + parked cars + motorbikes,
+  entrance canopies, drive-throughs, ambulance bay, fuel canopy + pumps, rooftop AC,
+  trees, lamps, bollards — all confined inside the parcel (proc.ts skips these blocks).
+  Building colliders added so nothing is walk-through.
 - 1.2.7 — fixed traffic freezing: vehicles wrongly treated a car BEHIND them as an
   obstacle (negative clearance → stuck). Now only count vehicles ahead; red-light stop
   only applies while still approaching the line, so nothing freezes for no reason.
