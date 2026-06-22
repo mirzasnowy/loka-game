@@ -249,16 +249,16 @@ export default function NPCSystem() {
 
   return (
     <>
-      <instancedMesh ref={headRef} args={[headGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
+      <instancedMesh ref={headRef} args={[headGeo, undefined, MAX_NPCS]} frustumCulled={false}>
         <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
       <instancedMesh ref={bodyRef} args={[bodyGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
         <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
-      <instancedMesh ref={armLRef} args={[armGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
+      <instancedMesh ref={armLRef} args={[armGeo, undefined, MAX_NPCS]} frustumCulled={false}>
         <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
-      <instancedMesh ref={armRRef} args={[armGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>
+      <instancedMesh ref={armRRef} args={[armGeo, undefined, MAX_NPCS]} frustumCulled={false}>
         <meshLambertMaterial color="#ffffff" />
       </instancedMesh>
       <instancedMesh ref={legLRef} args={[legGeo, undefined, MAX_NPCS]} castShadow frustumCulled={false}>

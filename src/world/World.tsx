@@ -321,13 +321,13 @@ function Trees() {
       <instancedMesh ref={botRef} args={[undefined, undefined, data.length]} castShadow>
         <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial color="white" />
       </instancedMesh>
-      <instancedMesh ref={midRef} args={[undefined, undefined, data.length]} castShadow>
+      <instancedMesh ref={midRef} args={[undefined, undefined, data.length]}>
         <sphereGeometry args={[1, 8, 6]} /><meshLambertMaterial color="white" />
       </instancedMesh>
-      <instancedMesh ref={topRef} args={[undefined, undefined, data.length]} castShadow>
+      <instancedMesh ref={topRef} args={[undefined, undefined, data.length]}>
         <sphereGeometry args={[1, 7, 5]} /><meshLambertMaterial color="white" />
       </instancedMesh>
-      <instancedMesh ref={bushRef} args={[undefined, undefined, data.length]} castShadow>
+      <instancedMesh ref={bushRef} args={[undefined, undefined, data.length]}>
         <sphereGeometry args={[1, 6, 5]} /><meshLambertMaterial color="white" />
       </instancedMesh>
     </>
